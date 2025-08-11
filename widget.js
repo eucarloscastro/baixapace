@@ -9,7 +9,7 @@
   const KM_PER_MI = 1.60934;
 
   function ensureBlinkerFont() {
-    if (!document.querySelector('link[href*=\"fonts.googleapis.com'][href*=\"Blinker\"]')) {
+    if (!document.querySelector('link[href*=\"fonts.googleapis.com']href*=\"Blinker\"]')) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = 'https://fonts.googleapis.com/css2?family=Blinker:wght@400;600;700&display=swap';
@@ -42,6 +42,8 @@
 
     .bp-pace .bp-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top:16px; }
     @media (max-width: 720px){ .bp-pace .bp-grid{ grid-template-columns: 1fr; } }
+
+
 
     .bp-pace .bp-card{ border:1px solid var(--bp-border); border-radius:16px; padding:16px; background:#fff; }
     .bp-pace .bp-label{ font-size:12px; text-transform:uppercase; letter-spacing:.4px; color:var(--bp-muted); font-weight:700; display:block; margin-bottom:10px; }
