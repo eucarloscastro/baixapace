@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Calculadora de Pace — Baixa Pace® (Widget)</title>
+    <meta name="description" content="Calculadora de Pace com km/mi, presets 5K/10K/21K/42K — pronta para incorporar via iframe.">
+    <style>
+      html,body{margin:0;padding:0;background:#ffffff;}
+      .container{padding:24px;}
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div id="app"></div>
+    </div>
+
+    <!-- Widget -->
+    <script src="./widget.js"></script>
+    <script>
+      // Renderiza o widget no #app (opções: unit:'km'|'mi', presetKm:Number)
+      window.BaixaPacePaceWidget.mount('#app', { unit: 'km' /*, presetKm: 10 */ });
+    </script>
+  </body>
+</html>
