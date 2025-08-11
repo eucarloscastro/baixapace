@@ -1,4 +1,5 @@
 /*! Baixa Pace® — Calculadora de Pace (widget)
+
  *  - Unidade km/mi, presets 5K/10K/21K/42K
  *  - Preencha 2 campos para calcular o 3º (Tempo, Distância, Pace)
  *  - Botões: Copiar, Compartilhar, WhatsApp, Instagram Web
