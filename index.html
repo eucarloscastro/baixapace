@@ -1,27 +1,261 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Calculadora de Pace — Baixa Pace® (Widget)</title>
-    <meta name="description" content="Calculadora de Pace com km/mi, presets 5K/10K/21K/42K — pronta para incorporar via iframe.">
-    <style>
-      html,body{margin:0;padding:0;background:#ffffff;}
-      .container{padding:24px;}
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div id="app"></div>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Calculadora de Pace — Baixa Pace®</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Blinker:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bp-red:#d42f2f; --bp-bg:#fff; --bp-muted:#777; --bp-border:#e7e7e7;
+      --bp-text:#141414; --bp-card:#fff; --bp-shadow:0 10px 30px rgba(0,0,0,.06);
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:'Blinker',system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,sans-serif; background:#fafafa; color:var(--bp-text)}
+    .wrap{max-width:880px; margin:40px auto; padding:24px}
+    .card{background:var(--bp-card); border:1px solid var(--bp-border); border-radius:18px; padding:18px; box-shadow:var(--bp-shadow)}
+    h1{font-size:clamp(22px,2.4vw,28px); margin:0 0 6px; font-weight:700; letter-spacing:.2px}
+    .sub{color:var(--bp-muted); margin:0 0 16px}
+    .grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px}
+    @media (max-width: 880px){ .grid{grid-template-columns:1fr} }
+    .field{position:relative}
+    label{display:block; font-weight:700; margin:0 0 6px}
+    input[type="text"], input[type="number"]{
+      width:100%; padding:16px; border-radius:12px; border:1px solid var(--bp-border);
+      font-size:18px; outline:none; transition:border-color .2s, box-shadow .2s;
+    }
+    input:focus{border-color:#c9c9c9; box-shadow:0 0 0 4px rgba(0,0,0,.05)}
+    .mini{display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap}
+    .seg{display:flex; background:#f3f3f3; border-radius:12px; padding:4px; gap:4px}
+    .seg button{
+      padding:10px 14px; background:#fff; border:1px solid var(--bp-border); border-radius:999px;
+      font-weight:700; font-size:14px; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.05);
+    }
+    .seg button[aria-pressed="true"]{background:var(--bp-red); color:#fff; box-shadow:0 4px 12px rgba(212,47,47,.35)}
+    .row{display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-top:14px}
+    .actions{display:flex; gap:10px; flex-wrap:wrap}
+    .btn{
+      font-weight:700; border:1px solid var(--bp-border); background:#fff; padding:10px 14px;
+      border-radius:12px; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,.06)
+    }
+    .btn.primary{background:var(--bp-red); color:#fff; border-color:transparent}
+    .badge{font-size:12px; font-weight:700; padding:6px 10px; border-radius:999px; background:#fff; border:1px solid var(--bp-border)}
+    .note{font-size:12px; color:var(--bp-muted); margin-top:8px}
+    .toast{
+      position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px);
+      background:#141414; color:#fff; padding:10px 14px; border-radius:10px; font-weight:700;
+      opacity:0; pointer-events:none; transition:all .25s ease; box-shadow:0 6px 18px rgba(0,0,0,.25)
+    }
+    .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Calculadora de Pace</h1>
+      <p class="sub">Preencha <b>dois</b> campos — eu calculo o terceiro. Use km/mi e presets rápidos.</p>
+
+      <div class="grid">
+        <div class="field">
+          <label for="tempo">Tempo (hh:mm:ss)</label>
+          <input id="tempo" type="text" placeholder="01:45:30" inputmode="numeric" autocomplete="off">
+          <div class="note">Aceita também <b>mm:ss</b> (ex.: 45:30) ou minutos (ex.: 105).</div>
+        </div>
+
+        <div class="field">
+          <label for="dist">Distância</label>
+          <input id="dist" type="number" step="0.01" min="0" placeholder="10.00">
+          <div class="mini">
+            <span class="badge">Unidade:</span>
+            <div class="seg" id="unitSeg">
+              <button type="button" data-unit="km" aria-pressed="true">km</button>
+              <button type="button" data-unit="mi" aria-pressed="false">mi</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="pace">Pace (min/uni)</label>
+          <input id="pace" type="text" placeholder="04:30" inputmode="numeric" autocomplete="off">
+          <div class="note">Formato <b>mm:ss</b> (ex.: 05:15 por km/mi).</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="actions">
+          <span class="badge">Presets:</span>
+          <button class="btn" data-preset="5">5K</button>
+          <button class="btn" data-preset="10">10K</button>
+          <button class="btn" data-preset="21.097">21K</button>
+          <button class="btn" data-preset="42.195">42K</button>
+        </div>
+
+        <div class="actions">
+          <button class="btn" id="copyBtn">Copiar resultado</button>
+          <button class="btn primary" id="shareBtn">Compartilhar</button>
+          <button class="btn" id="clearBtn">Limpar</button>
+        </div>
+      </div>
+
+      <p class="note" id="resumo">—</p>
     </div>
+  </div>
 
-    <!-- Widget -->
-    <script src="./widget.js"></script>
-    <script>
-      // Renderiza o widget no #app (opções: unit:'km'|'mi', presetKm:Number)
-      window.BaixaPacePaceWidget.mount('#app', { unit: 'km' /*, presetKm: 10 */ });
-    </script>
-  </body>
+  <div class="toast" id="toast">Copiado!</div>
+
+  <script>
+    (function(){
+      const KM_PER_MI = 1.60934;
+
+      const elTempo = document.getElementById('tempo');
+      const elDist  = document.getElementById('dist');
+      const elPace  = document.getElementById('pace');
+      const unitSeg = document.getElementById('unitSeg');
+      const resumo  = document.getElementById('resumo');
+      const toast   = document.getElementById('toast');
+
+      let unit = 'km';
+      let lastChanged = null;
+
+      // Helpers de tempo/pace
+      function parseTime(v){
+        if(!v) return NaN;
+        v = (''+v).trim();
+        if(/^\d+(:\d{1,2}){0,2}$/.test(v)){
+          const parts = v.split(':').map(Number);
+          if(parts.length===3) return parts[0]*3600 + parts[1]*60 + parts[2];
+          if(parts.length===2) return parts[0]*60 + parts[1];
+          if(parts.length===1) return parts[0]*60; // "min"
+        }
+        if(/^\d+(\.\d+)?$/.test(v)) return Number(v)*60; // minutos decimais
+        return NaN;
+      }
+      function fmtTime(sec){
+        if(!isFinite(sec)) return '';
+        sec = Math.max(0, Math.round(sec));
+        const h = Math.floor(sec/3600);
+        const m = Math.floor((sec%3600)/60);
+        const s = sec%60;
+        const mm = String(m).padStart(2,'0');
+        const ss = String(s).padStart(2,'0');
+        return h>0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
+      }
+      function parsePace(v){ return parseTime(v); } // mm:ss -> segundos por unidade
+      function fmtPace(sec){
+        if(!isFinite(sec)) return '';
+        sec = Math.max(0, Math.round(sec));
+        const m = Math.floor(sec/60), s = sec%60;
+        return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      }
+
+      // Estado -> resumo
+      function updateResumo(){
+        const t = parseTime(elTempo.value);
+        const d = Number(elDist.value);
+        const p = parsePace(elPace.value);
+        const u = unit;
+        let parts = [];
+        if(isFinite(t)) parts.push(`Tempo: ${fmtTime(t)}`);
+        if(isFinite(d)) parts.push(`Distância: ${(+d).toFixed(2)} ${u}`);
+        if(isFinite(p)) parts.push(`Pace: ${fmtPace(p)} /${u}`);
+        resumo.textContent = parts.length? parts.join(' • ') : '—';
+      }
+
+      // Cálculo inteligente (dois preenchidos -> calcula o terceiro)
+      function recalc(){
+        const t = parseTime(elTempo.value);
+        const d = Number(elDist.value);
+        const p = parsePace(elPace.value);
+
+        const hasT = isFinite(t);
+        const hasD = isFinite(d) && d>0;
+        const hasP = isFinite(p);
+
+        if( (hasD && hasP) && (!hasT || lastChanged!=='tempo') ){
+          elTempo.value = fmtTime(d * p);
+        } else if( (hasT && hasD) && (!hasP || lastChanged!=='pace') ){
+          const pace = t / d;
+          elPace.value = fmtPace(pace);
+        } else if( (hasT && hasP) && (!hasD || lastChanged!=='dist') ){
+          const dist = t / p;
+          elDist.value = (isFinite(dist)? dist : 0).toFixed(2);
+        }
+
+        updateResumo();
+      }
+
+      // Unidade (km/mi) com conversão
+      unitSeg.addEventListener('click', (e)=>{
+        const btn = e.target.closest('button[data-unit]');
+        if(!btn) return;
+        const newUnit = btn.dataset.unit;
+        if(newUnit===unit) return;
+
+        // trocar UI
+        [...unitSeg.querySelectorAll('button')].forEach(b=>b.setAttribute('aria-pressed', b===btn ? 'true':'false'));
+
+        // conversões
+        const d = Number(elDist.value);
+        const p = parsePace(elPace.value);
+        if(isFinite(d) && d>0){
+          elDist.value = (newUnit==='mi' ? d / KM_PER_MI : d * KM_PER_MI).toFixed(2);
+        }
+        if(isFinite(p)){
+          // pace: s por unidade -> inverso
+          elPace.value = fmtPace(newUnit==='mi' ? p*KM_PER_MI : p/KM_PER_MI);
+        }
+        unit = newUnit;
+        recalc();
+      });
+
+      // Presets (5K/10K/21K/42K)
+      document.querySelectorAll('[data-preset]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const km = Number(btn.dataset.preset);
+          const dist = unit==='mi' ? (km / KM_PER_MI) : km;
+          elDist.value = dist.toFixed(3).replace(/\.?0+$/,''); // tira zeros finais
+          lastChanged = 'dist';
+          recalc();
+        });
+      });
+
+      // Eventos de entrada
+      elTempo.addEventListener('input', ()=>{ lastChanged='tempo'; recalc(); });
+      elDist .addEventListener('input', ()=>{ lastChanged='dist';  recalc(); });
+      elPace .addEventListener('input', ()=>{ lastChanged='pace';  recalc(); });
+
+      // Ações
+      function showToast(msg='Copiado!'){
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(()=>toast.classList.remove('show'), 1400);
+      }
+      document.getElementById('copyBtn').addEventListener('click', async ()=>{
+        try{
+          await navigator.clipboard.writeText(resumo.textContent);
+          showToast('Copiado!');
+        }catch(e){ showToast('Não foi possível copiar'); }
+      });
+      document.getElementById('shareBtn').addEventListener('click', async ()=>{
+        const text = `Calculadora de Pace — ${resumo.textContent}`;
+        if(navigator.share){
+          try{ await navigator.share({title:'Calculadora de Pace', text}); }
+          catch(_){/* cancelado */ }
+        }else{
+          try{ await navigator.clipboard.writeText(text); showToast('Copiado!'); }
+          catch(_){ showToast('Não foi possível compartilhar'); }
+        }
+      });
+      document.getElementById('clearBtn').addEventListener('click', ()=>{
+        elTempo.value=''; elDist.value=''; elPace.value='';
+        lastChanged=null; updateResumo();
+      });
+
+      // init
+      updateResumo();
+    })();
+  </script>
+</body>
 </html>
-
-<!-- rebuild trigger -->
