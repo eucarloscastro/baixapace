@@ -1,4 +1,4 @@
-<!-- Baixa Pace® — Calculadora de Pace (cálculo somente ao clicar) -->
+<!-- Baixa Pace® — Calculadora de Pace (fix: vírgula em distância + bug themeSeg) -->
 <div id="bp-pace-app" class="bp-pace">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Blinker:wght@400;600;700&display=swap');
@@ -75,7 +75,8 @@
         </div>
         <div class="bp-field">
           <label class="bp-label" for="dist">Distância</label>
-          <input id="dist" class="bp-input" type="number" step="0.01" min="0" placeholder="10.00">
+          <!-- trocado para TEXT + inputmode decimal para aceitar vírgula -->
+          <input id="dist" class="bp-input" type="text" inputmode="decimal" placeholder="42,195">
         </div>
         <div class="bp-field">
           <label class="bp-label" for="pace">Pace (min/uni)</label>
@@ -108,7 +109,7 @@
       const elDist  = document.getElementById('dist');
       const elPace  = document.getElementById('pace');
       const unitSeg = document.getElementById('unitSeg');
-      const themeSeg= document.getElementById('themeSeg');
+      const themeSeg= document.getElementById('themeSeg'); // ✅ única declaração
       const resumo  = document.getElementById('resumo');
       const toast   = document.getElementById('bp-toast');
       const btnCalc = document.getElementById('calcBtn');
@@ -118,7 +119,19 @@
       let unit = 'km';
       let storyTheme = 'light';
 
-      // --- helpers de tempo/pace ---
+      // --------- parsing/format ----------
+      function normNumber(str){
+        if(!str) return NaN;
+        // remove pontos de milhar e troca vírgula por ponto
+        const v = (''+str).trim().replace(/\./g,'').replace(',', '.');
+        const n = Number(v);
+        return isFinite(n) ? n : NaN;
+      }
+      function formatPt(n, dec=3){
+        // exibe com vírgula e sem zeros desnecessários
+        return n.toFixed(dec).replace(/\.?0+$/,'').replace('.', ',');
+      }
+
       function parseTime(v){
         if(!v) return NaN; v = (''+v).trim();
         if(/^\d+(:\d{1,2}){0,2}$/.test(v)){
@@ -127,7 +140,7 @@
           if(parts.length===2) return parts[0]*60 + parts[1];
           if(parts.length===1) return parts[0]*60;
         }
-        if(/^\d+(\.\d+)?$/.test(v)) return Number(v)*60; // minutos decimais
+        if(/^\d+(\.\d+)?$/.test(v)) return Number(v)*60;
         return NaN;
       }
       function fmtTime(sec){
@@ -148,82 +161,61 @@
         return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
       }
 
-      // --- estado/validação e UI ---
       function isTempo(){ return isFinite(parseTime(elTempo.value)); }
-      function isDist(){ const d = Number(elDist.value); return isFinite(d) && d>0; }
+      function isDist(){ const d = normNumber(elDist.value); return isFinite(d) && d>0; }
       function isPace(){ return isFinite(parsePace(elPace.value)); }
-
       function countValid(){ return (isTempo()?1:0) + (isDist()?1:0) + (isPace()?1:0); }
 
       function updateResumo(){
         const t = parseTime(elTempo.value);
-        const d = Number(elDist.value);
+        const d = normNumber(elDist.value);
         const p = parsePace(elPace.value);
         const u = unit;
         const parts = [];
         if(isFinite(t)) parts.push(`Tempo: ${fmtTime(t)}`);
-        if(isFinite(d)) parts.push(`Distância: ${(+d).toFixed(2)} ${u}`);
+        if(isFinite(d)) parts.push(`Distância: ${formatPt(d,2)} ${u}`);
         if(isFinite(p)) parts.push(`Pace: ${fmtPace(p)} /${u}`);
         resumo.textContent = parts.length ? parts.join(' • ') : '—';
       }
+      function updateCalcButton(){ btnCalc.disabled = (countValid() !== 2); }
+      function showToast(msg='Copiado!'){ toast.textContent=msg; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'), 1400); }
 
-      function updateCalcButton(){
-        const valid = countValid();
-        btnCalc.disabled = (valid !== 2);
-      }
-
-      function showToast(msg='Copiado!'){
-        toast.textContent = msg;
-        toast.classList.add('show');
-        setTimeout(()=>toast.classList.remove('show'), 1400);
-      }
-
-      // --- eventos de entrada: NÃO calcular automaticamente ---
+      // eventos de entrada (não calcula automático)
       ['input','change'].forEach(ev=>{
         elTempo.addEventListener(ev, ()=>{ updateCalcButton(); updateResumo(); });
         elDist .addEventListener(ev, ()=>{ updateCalcButton(); updateResumo(); });
         elPace .addEventListener(ev, ()=>{ updateCalcButton(); updateResumo(); });
       });
-
-      // Enter nas caixas ativa o Calcular (se habilitado)
       [elTempo, elDist, elPace].forEach(el=>{
         el.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !btnCalc.disabled){ e.preventDefault(); btnCalc.click(); }});
       });
 
-      // --- mudança de unidade: só converte campos preenchidos, sem calcular o terceiro ---
+      // unidade (converte o que já estiver preenchido)
       unitSeg.addEventListener('click', (e)=>{
         const btn = e.target.closest('button[data-unit]'); if(!btn) return;
         const newUnit = btn.dataset.unit; if(newUnit===unit) return;
         [...unitSeg.querySelectorAll('button')].forEach(b=>b.setAttribute('aria-pressed', b===btn ? 'true':'false'));
 
-        const dHas = isDist();
-        const pHas = isPace();
-
-        if(dHas){
-          const d = Number(elDist.value);
-          elDist.value = (newUnit==='mi' ? d / KM_PER_MI : d * KM_PER_MI).toFixed(2);
-        }
-        if(pHas){
-          const p = parsePace(elPace.value);
-          elPace.value = fmtPace(newUnit==='mi' ? p*KM_PER_MI : p/KM_PER_MI);
-        }
+        const d = normNumber(elDist.value);
+        const p = parsePace(elPace.value);
+        if(isFinite(d)) elDist.value = formatPt(newUnit==='mi' ? d / KM_PER_MI : d * KM_PER_MI);
+        if(isFinite(p)) elPace.value = fmtPace(newUnit==='mi' ? p*KM_PER_MI : p/KM_PER_MI);
 
         unit = newUnit;
         updateCalcButton(); updateResumo();
       });
 
-      // presets: só preenche distância
+      // presets (preenche só a distância)
       document.querySelectorAll('[data-preset]').forEach(btn=>{
         btn.addEventListener('click', ()=>{
           const km = Number(btn.dataset.preset);
           const dist = unit==='mi' ? (km / KM_PER_MI) : km;
-          elDist.value = dist.toFixed(3).replace(/\.?0+$/,'');
+          elDist.value = formatPt(dist);
           updateCalcButton(); updateResumo();
         });
       });
 
-      // tema do story (só afeta a imagem)
-      const themeSeg = document.getElementById('themeSeg');
+      // tema do story
       themeSeg.addEventListener('click', (e)=>{
         const btn = e.target.closest('button[data-theme]'); if(!btn) return;
         const th = btn.dataset.theme; if(th===storyTheme) return;
@@ -231,24 +223,24 @@
         storyTheme = th;
       });
 
-      // --- CALCULAR ao clicar ---
+      // calcular ao clicar
       btnCalc.addEventListener('click', ()=>{
         const tHas = isTempo(), dHas = isDist(), pHas = isPace();
-        const valid = (tHas?1:0)+(dHas?1:0)+(pHas?1:0);
-        if(valid!==2){
+        if( (tHas?1:0)+(dHas?1:0)+(pHas?1:0) !== 2 ){
           showToast('Preencha exatamente dois campos');
           return;
         }
+        const t = parseTime(elTempo.value);
+        const d = normNumber(elDist.value);
+        const p = parsePace(elPace.value);
 
         if(!tHas && dHas && pHas){
-          const t = Number(elDist.value) * parsePace(elPace.value);
-          elTempo.value = fmtTime(t);
+          elTempo.value = fmtTime(d * p);
         }else if(!pHas && tHas && dHas){
-          const pace = parseTime(elTempo.value) / Number(elDist.value);
-          elPace.value = fmtPace(pace);
+          elPace.value = fmtPace(t / d);
         }else if(!dHas && tHas && pHas){
-          const dist = parseTime(elTempo.value) / parsePace(elPace.value);
-          elDist.value = (isFinite(dist)? dist : 0).toFixed(2);
+          const dist = t / p;
+          elDist.value = formatPt(isFinite(dist)? dist : 0);
         }
         updateCalcButton(); updateResumo();
       });
@@ -263,11 +255,10 @@
         updateCalcButton(); updateResumo();
       });
 
-      // ---- GERAR IMAGEM 1080x1920 + IG / DOWNLOAD ----
+      // ------- Story image + IG / Download (igual antes) -------
       async function makeStoryImage(text, theme){
         const W=1080, H=1920, p=60;
-        const canvas = document.createElement('canvas');
-        canvas.width=W; canvas.height=H;
+        const canvas = document.createElement('canvas'); canvas.width=W; canvas.height=H;
         const ctx = canvas.getContext('2d');
 
         const isDark = theme==='dark';
@@ -279,7 +270,6 @@
         const g = ctx.createLinearGradient(0,0,W,H);
         g.addColorStop(0,bg1); g.addColorStop(1,bg2);
         ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-
         await document.fonts.ready;
 
         ctx.fillStyle = fg;
@@ -291,8 +281,7 @@
 
         ctx.font = '600 54px Blinker, sans-serif';
         const lines = wrapText(ctx, text, W - p*2);
-        let y = p+260;
-        lines.forEach(l => { ctx.fillText(l, p, y); y += 76; });
+        let y = p+260; lines.forEach(l => { ctx.fillText(l, p, y); y += 76; });
 
         ctx.font = '400 40px Blinker, sans-serif';
         ctx.fillStyle = acc;
@@ -301,25 +290,21 @@
         return new Promise(resolve=> canvas.toBlob(b=>resolve(b), 'image/jpeg', 0.95));
 
         function wrapText(ctx, t, maxW){
-          const words = t.split(' ');
-          let line='', out=[];
+          const words = t.split(' '); let line='', out=[];
           for(const w of words){
             const test = line ? line + ' ' + w : w;
             if(ctx.measureText(test).width <= maxW){ line = test; }
             else { out.push(line); line = w; }
           }
-          if(line) out.push(line);
-          return out;
+          if(line) out.push(line); return out;
         }
       }
-
       async function buildBlob(){
         const base = resumo.textContent && resumo.textContent!=='—'
           ? resumo.textContent
           : 'Preencha dois campos e clique em Calcular para gerar seu resultado.';
         return await makeStoryImage(base, storyTheme);
       }
-
       document.getElementById('igBtn').addEventListener('click', async ()=>{
         try{
           const blob = await buildBlob();
@@ -327,21 +312,16 @@
           if(navigator.canShare && navigator.canShare({ files:[file] })){
             await navigator.share({ files:[file], title:'Calculadora de Pace — Baixa Pace', text:'Meu resultado na Calculadora de Pace' });
           }else{
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'pace-story.jpg';
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'pace-story.jpg';
             document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
             showToast('Imagem baixada (poste nos Stories)');
           }
         }catch(e){ showToast('Não foi possível compartilhar'); }
       });
-
       document.getElementById('dlBtn').addEventListener('click', async ()=>{
         try{
           const blob = await buildBlob();
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(blob);
-          a.download = 'pace-story.jpg';
+          const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'pace-story.jpg';
           document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
           showToast('Imagem baixada');
         }catch(e){ showToast('Falha ao baixar'); }
@@ -353,3 +333,4 @@
     })();
   </script>
 </div>
+
