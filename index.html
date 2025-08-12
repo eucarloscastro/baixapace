@@ -1,21 +1,17 @@
-<!-- Baixa Pace® — Calculadora de Pace (fix: vírgula em distância + bug themeSeg) -->
+<!-- Baixa Pace® — Calculadora de Pace (mobile-friendly + máscara + unidade no rodapé) -->
 <div id="bp-pace-app" class="bp-pace">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Blinker:wght@400;600;700&display=swap');
-
     #bp-pace-app { font-family:'Blinker',system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,sans-serif; color:#141414 }
     #bp-pace-app * { box-sizing:border-box }
     .bp-wrap{max-width:880px;margin:40px auto;padding:24px}
     .bp-card{background:#fff;border:1px solid #e7e7e7;border-radius:18px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.06)}
     .bp-title{font-size:clamp(22px,2.4vw,28px);margin:0 0 6px;font-weight:700;letter-spacing:.2px}
-    .bp-sub{color:#777;margin:0 0 16px}
+    .bp-sub{color:#555;margin:0 0 16px}
 
-    .bp-topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 16px}
-    .bp-group{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    /* Presets no topo (mantidos) */
+    .bp-topbar{display:flex;justify-content:flex-start;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 16px}
     .bp-badge{font-size:12px;font-weight:700;padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #e7e7e7}
-    .bp-seg{display:flex;background:#f3f3f3;border-radius:12px;padding:4px;gap:4px}
-    .bp-seg button{padding:10px 14px;background:#fff;border:1px solid #e7e7e7;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.05)}
-    .bp-seg button[aria-pressed="true"]{background:#d42f2f;color:#fff;box-shadow:0 4px 12px rgba(212,47,47,.35)}
     .bp-btn{font-weight:700;border:1px solid #e7e7e7;background:#fff;padding:10px 14px;border-radius:12px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.06)}
     .bp-btn.primary{background:#d42f2f;color:#fff;border-color:transparent}
     .bp-btn[disabled]{opacity:.5;cursor:not-allowed;box-shadow:none}
@@ -27,12 +23,16 @@
     .bp-label{display:block;font-weight:700;margin:0 0 6px}
     .bp-input{width:100%;padding:16px;border-radius:12px;border:1px solid #e7e7e7;font-size:18px;outline:none;transition:border-color .2s,box-shadow .2s}
     .bp-input:focus{border-color:#c9c9c9;box-shadow:0 0 0 4px rgba(0,0,0,.05)}
-    .bp-note{font-size:12px;color:#777;margin-top:8px}
+    .bp-note{font-size:12px;color:#555;margin-top:8px}
 
-    .bp-row{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px}
-    .bp-actions{display:flex;gap:10px;flex-wrap:wrap}
+    .bp-row{display:flex;justify-content:flex-start;gap:10px;flex-wrap:wrap;margin-top:14px}
+    .bp-resumo{font-size:12px;color:#555;margin-top:8px}
+    .bp-seg{display:flex;background:#f3f3f3;border-radius:12px;padding:4px;gap:4px}
+    .bp-seg button{padding:10px 14px;background:#fff;border:1px solid #e7e7e7;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.05)}
+    .bp-seg button[aria-pressed="true"]{background:#d42f2f;color:#fff;box-shadow:0 4px 12px rgba(212,47,47,.35)}
 
-    .bp-resumo{font-size:12px;color:#777;margin-top:8px}
+    /* Rodapé de unidade */
+    .bp-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
     .bp-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#141414;color:#fff;padding:10px 14px;border-radius:10px;font-weight:700;opacity:0;pointer-events:none;transition:all .25s ease;box-shadow:0 6px 18px rgba(0,0,0,.25)}
     .bp-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   </style>
@@ -42,56 +42,48 @@
       <h1 class="bp-title">Calculadora de Pace</h1>
       <p class="bp-sub"><b>Preencha dois campos</b> — e clique em <b>Calcular</b> que eu preencho o terceiro 😉</p>
 
-      <!-- TOPBAR: Unidade + Presets + Tema do Story -->
+      <!-- PRESETS (topo) -->
       <div class="bp-topbar">
-        <div class="bp-group">
-          <span class="bp-badge">Unidade:</span>
-          <div class="bp-seg" id="unitSeg">
-            <button type="button" data-unit="km" aria-pressed="true">km</button>
-            <button type="button" data-unit="mi" aria-pressed="false">mi</button>
-          </div>
-        </div>
-        <div class="bp-group">
-          <span class="bp-badge">Presets:</span>
-          <button class="bp-btn" data-preset="5">5K</button>
-          <button class="bp-btn" data-preset="10">10K</button>
-          <button class="bp-btn" data-preset="21.097">21K</button>
-          <button class="bp-btn" data-preset="42.195">42K</button>
-        </div>
-        <div class="bp-group">
-          <span class="bp-badge">Story:</span>
-          <div class="bp-seg" id="themeSeg">
-            <button type="button" data-theme="light" aria-pressed="true">claro</button>
-            <button type="button" data-theme="dark" aria-pressed="false">escuro</button>
-          </div>
-        </div>
+        <span class="bp-badge">Presets:</span>
+        <button class="bp-btn" data-preset="5">5K</button>
+        <button class="bp-btn" data-preset="10">10K</button>
+        <button class="bp-btn" data-preset="21.097">21K</button>
+        <button class="bp-btn" data-preset="42.195">42K</button>
       </div>
 
       <div class="bp-grid">
         <div class="bp-field">
           <label class="bp-label" for="tempo">Tempo (hh:mm:ss)</label>
-          <input id="tempo" class="bp-input" type="text" placeholder="01:45:30" inputmode="numeric" autocomplete="off">
+          <!-- numérico no mobile, com máscara automática de : -->
+          <input id="tempo" class="bp-input" type="text" inputmode="numeric" placeholder="02:59:20" autocomplete="off">
           <div class="bp-note">Aceita <b>mm:ss</b> (ex.: 45:30) ou minutos (ex.: 105).</div>
         </div>
         <div class="bp-field">
           <label class="bp-label" for="dist">Distância</label>
-          <!-- trocado para TEXT + inputmode decimal para aceitar vírgula -->
+          <!-- aceita vírgula -->
           <input id="dist" class="bp-input" type="text" inputmode="decimal" placeholder="42,195">
         </div>
         <div class="bp-field">
           <label class="bp-label" for="pace">Pace (min/uni)</label>
-          <input id="pace" class="bp-input" type="text" placeholder="04:30" inputmode="numeric" autocomplete="off">
+          <!-- máscara mm:ss -->
+          <input id="pace" class="bp-input" type="text" inputmode="numeric" placeholder="04:30" autocomplete="off">
           <div class="bp-note">Formato <b>mm:ss</b> (ex.: 05:15 por km/mi).</div>
         </div>
       </div>
 
       <div class="bp-row">
-        <div class="bp-actions">
-          <button class="bp-btn primary" id="calcBtn" disabled>Calcular</button>
-          <button class="bp-btn" id="copyBtn">Copiar resultado</button>
-          <button class="bp-btn" id="igBtn">Compartilhar no Instagram</button>
-          <button class="bp-btn" id="dlBtn">Baixar imagem</button>
-          <button class="bp-btn" id="clearBtn">Limpar</button>
+        <button class="bp-btn primary" id="calcBtn" disabled>Calcular</button>
+        <button class="bp-btn" id="igBtn">Compartilhar no Instagram</button>
+        <button class="bp-btn" id="dlBtn">Baixar imagem</button>
+        <button class="bp-btn" id="clearBtn">Limpar</button>
+      </div>
+
+      <!-- Unidade NO RODAPÉ -->
+      <div class="bp-foot">
+        <span class="bp-badge">Unidade:</span>
+        <div class="bp-seg" id="unitSeg">
+          <button type="button" data-unit="km" aria-pressed="true">km</button>
+          <button type="button" data-unit="mi" aria-pressed="false">mi</button>
         </div>
       </div>
 
@@ -109,26 +101,22 @@
       const elDist  = document.getElementById('dist');
       const elPace  = document.getElementById('pace');
       const unitSeg = document.getElementById('unitSeg');
-      const themeSeg= document.getElementById('themeSeg'); // ✅ única declaração
       const resumo  = document.getElementById('resumo');
       const toast   = document.getElementById('bp-toast');
       const btnCalc = document.getElementById('calcBtn');
       const btnIG   = document.getElementById('igBtn');
       const btnDL   = document.getElementById('dlBtn');
 
-      let unit = 'km';
-      let storyTheme = 'light';
+      let unit = 'km'; // default Brasil
 
-      // --------- parsing/format ----------
+      // ---------- util ----------
       function normNumber(str){
         if(!str) return NaN;
-        // remove pontos de milhar e troca vírgula por ponto
         const v = (''+str).trim().replace(/\./g,'').replace(',', '.');
         const n = Number(v);
         return isFinite(n) ? n : NaN;
       }
       function formatPt(n, dec=3){
-        // exibe com vírgula e sem zeros desnecessários
         return n.toFixed(dec).replace(/\.?0+$/,'').replace('.', ',');
       }
 
@@ -180,17 +168,46 @@
       function updateCalcButton(){ btnCalc.disabled = (countValid() !== 2); }
       function showToast(msg='Copiado!'){ toast.textContent=msg; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'), 1400); }
 
-      // eventos de entrada (não calcula automático)
-      ['input','change'].forEach(ev=>{
-        elTempo.addEventListener(ev, ()=>{ updateCalcButton(); updateResumo(); });
-        elDist .addEventListener(ev, ()=>{ updateCalcButton(); updateResumo(); });
-        elPace .addEventListener(ev, ()=>{ updateCalcButton(); updateResumo(); });
-      });
+      // ---------- máscaras mobile ----------
+      function maskTempo(){
+        let d = elTempo.value.replace(/\D/g,'').slice(0,6);
+        let out = d;
+        if(d.length>=5){ // h h m m s s
+          out = d.slice(0,-4).padStart(2,'0') + ':' + d.slice(-4,-2).padStart(2,'0') + ':' + d.slice(-2).padStart(2,'0');
+        }else if(d.length>=3){ // m m s s
+          out = d.slice(0,-2).padStart(2,'0') + ':' + d.slice(-2).padStart(2,'0');
+        }
+        elTempo.value = out;
+      }
+      function maskPace(){
+        let d = elPace.value.replace(/\D/g,'').slice(0,4);
+        let out = d;
+        if(d.length>=3){
+          out = d.slice(0,-2).padStart(2,'0') + ':' + d.slice(-2).padStart(2,'0');
+        }
+        elPace.value = out;
+      }
+
+      elTempo.addEventListener('input', ()=>{ maskTempo(); updateCalcButton(); updateResumo(); });
+      elPace .addEventListener('input', ()=>{ maskPace();  updateCalcButton(); updateResumo(); });
+      elDist .addEventListener('input', ()=>{ updateCalcButton(); updateResumo(); });
+
+      // Enter nas caixas ativa Calcular (se liberado)
       [elTempo, elDist, elPace].forEach(el=>{
         el.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !btnCalc.disabled){ e.preventDefault(); btnCalc.click(); }});
       });
 
-      // unidade (converte o que já estiver preenchido)
+      // Presets (só distância)
+      document.querySelectorAll('[data-preset]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const km = Number(btn.dataset.preset);
+          const dist = unit==='mi' ? (km / KM_PER_MI) : km;
+          elDist.value = formatPt(dist);
+          updateCalcButton(); updateResumo();
+        });
+      });
+
+      // Unidade no rodapé (converte o que existir)
       unitSeg.addEventListener('click', (e)=>{
         const btn = e.target.closest('button[data-unit]'); if(!btn) return;
         const newUnit = btn.dataset.unit; if(newUnit===unit) return;
@@ -205,30 +222,11 @@
         updateCalcButton(); updateResumo();
       });
 
-      // presets (preenche só a distância)
-      document.querySelectorAll('[data-preset]').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const km = Number(btn.dataset.preset);
-          const dist = unit==='mi' ? (km / KM_PER_MI) : km;
-          elDist.value = formatPt(dist);
-          updateCalcButton(); updateResumo();
-        });
-      });
-
-      // tema do story
-      themeSeg.addEventListener('click', (e)=>{
-        const btn = e.target.closest('button[data-theme]'); if(!btn) return;
-        const th = btn.dataset.theme; if(th===storyTheme) return;
-        [...themeSeg.querySelectorAll('button')].forEach(b=>b.setAttribute('aria-pressed', b===btn ? 'true':'false'));
-        storyTheme = th;
-      });
-
-      // calcular ao clicar
+      // Calcular (só com 2 válidos)
       btnCalc.addEventListener('click', ()=>{
         const tHas = isTempo(), dHas = isDist(), pHas = isPace();
         if( (tHas?1:0)+(dHas?1:0)+(pHas?1:0) !== 2 ){
-          showToast('Preencha exatamente dois campos');
-          return;
+          showToast('Preencha exatamente dois campos'); return;
         }
         const t = parseTime(elTempo.value);
         const d = normNumber(elDist.value);
@@ -245,28 +243,19 @@
         updateCalcButton(); updateResumo();
       });
 
-      // copiar / limpar
-      document.getElementById('copyBtn').addEventListener('click', async ()=>{
-        try{ await navigator.clipboard.writeText(resumo.textContent); showToast('Copiado!'); }
-        catch(e){ showToast('Não foi possível copiar'); }
-      });
+      // Limpar
       document.getElementById('clearBtn').addEventListener('click', ()=>{
         elTempo.value=''; elDist.value=''; elPace.value='';
         updateCalcButton(); updateResumo();
       });
 
-      // ------- Story image + IG / Download (igual antes) -------
-      async function makeStoryImage(text, theme){
+      // --------- Geração de imagem (tema claro fixo) + IG / Download ---------
+      async function makeStoryImage(text){
         const W=1080, H=1920, p=60;
         const canvas = document.createElement('canvas'); canvas.width=W; canvas.height=H;
         const ctx = canvas.getContext('2d');
 
-        const isDark = theme==='dark';
-        const bg1 = isDark ? '#101014' : '#ffffff';
-        const bg2 = isDark ? '#2a2a33' : '#ffe9e9';
-        const fg  = isDark ? '#ffffff' : '#141414';
-        const acc = isDark ? '#ff7070' : '#d42f2f';
-
+        const bg1='#ffffff', bg2='#ffe9e9', fg='#141414', acc='#d42f2f';
         const g = ctx.createLinearGradient(0,0,W,H);
         g.addColorStop(0,bg1); g.addColorStop(1,bg2);
         ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
@@ -303,9 +292,9 @@
         const base = resumo.textContent && resumo.textContent!=='—'
           ? resumo.textContent
           : 'Preencha dois campos e clique em Calcular para gerar seu resultado.';
-        return await makeStoryImage(base, storyTheme);
+        return await makeStoryImage(base);
       }
-      document.getElementById('igBtn').addEventListener('click', async ()=>{
+      btnIG.addEventListener('click', async ()=>{
         try{
           const blob = await buildBlob();
           const file = new File([blob], 'pace-story.jpg', { type: 'image/jpeg' });
@@ -314,23 +303,25 @@
           }else{
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'pace-story.jpg';
             document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
-            showToast('Imagem baixada (poste nos Stories)');
           }
-        }catch(e){ showToast('Não foi possível compartilhar'); }
+        }catch(e){ /* silencioso */ }
       });
-      document.getElementById('dlBtn').addEventListener('click', async ()=>{
+      btnDL.addEventListener('click', async ()=>{
         try{
           const blob = await buildBlob();
           const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'pace-story.jpg';
           document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
-          showToast('Imagem baixada');
-        }catch(e){ showToast('Falha ao baixar'); }
+        }catch(e){}
       });
 
       // init
-      updateCalcButton();
-      updateResumo();
+      updateCalcButton(); updateResumo();
+
+      // ------- opcional: se estiver dentro de IFRAME, envia altura p/ pai (reduz “dupla rolagem”) -------
+      if(window.top !== window.self){
+        const postH = ()=> parent.postMessage({type:'bp-resize', height: document.documentElement.scrollHeight }, '*');
+        window.addEventListener('load', postH); new ResizeObserver(postH).observe(document.body);
+      }
     })();
   </script>
 </div>
-
