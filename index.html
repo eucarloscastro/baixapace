@@ -1,274 +1,234 @@
-<!doctype html>
-<html lang="pt-br">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Calculadora de Pace — Baixa Pace</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Blinker:wght@400;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root{ --red:#d42f2f; --border:#e7e7e7; --muted:#555; --text:#141414; }
-    *{ box-sizing:border-box }
-    body{ margin:0; font-family:'Blinker',system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,sans-serif; color:var(--text); background:#fafafa; }
-    .wrap{ max-width:880px; margin:40px auto; padding:24px }
-    .card{ background:#fff; border:1px solid var(--border); border-radius:18px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.06) }
-    h1{ font-size:clamp(22px,2.4vw,28px); margin:0 0 6px; font-weight:700; letter-spacing:.2px }
-    .sub{ color:var(--muted); margin:0 0 16px }
-    .topbar{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:6px 0 16px }
-    .badge{ font-size:12px; font-weight:700; padding:6px 10px; border-radius:999px; background:#fff; border:1px solid var(--border) }
-    .btn{ font-weight:700; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:12px; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,.06) }
-    .btn.primary{ background:var(--red); color:#fff; border-color:transparent }
-    .btn[disabled]{ opacity:.5; cursor:not-allowed; box-shadow:none }
-    .seg{ display:flex; background:#f3f3f3; border-radius:12px; padding:4px; gap:4px }
-    .seg button{ padding:10px 14px; background:#fff; border:1px solid var(--border); border-radius:999px; font-weight:700; font-size:14px; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.05) }
-    .seg button[aria-pressed="true"]{ background:var(--red); color:#fff; box-shadow:0 4px 12px rgba(212,47,47,.35) }
+<script>
+(function(){
+  const KM_PER_MI = 1.60934;
 
-    .grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px }
-    @media (max-width:880px){ .grid{ grid-template-columns:1fr } }
+  // ✅ LOGO oficial embutido (PNG transparente)
+  const LOGO_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAQ4CAYAAADsEGyPAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAFAGlUWHRYTUw6Y29tLmFkb2...AAAAAB7ggMAAADYExwAAADAnuAAAAAA9gIozpfhRD1MvgAAAABJRU5ErkJggg==';
 
-    .field{ position:relative }
-    .label{ display:block; font-weight:700; margin:0 0 6px }
-    .input{ width:100%; padding:16px; border-radius:12px; border:1px solid var(--border); font-size:18px; outline:none; transition:border-color .2s, box-shadow .2s; }
-    .input:focus{ border-color:#c9c9c9; box-shadow:0 0 0 4px rgba(0,0,0,.05) }
-    .note{ font-size:12px; color:var(--muted); margin-top:8px }
+  const elTempo = document.getElementById('tempo');
+  const elDist  = document.getElementById('dist');
+  const elPace  = document.getElementById('pace');
+  const unitSeg = document.getElementById('unitSeg');
+  const resumo  = document.getElementById('resumo');
+  const btnCalc = document.getElementById('calcBtn');
+  const btnIG   = document.getElementById('igBtn');
+  const btnDL   = document.getElementById('dlBtn');
 
-    .row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:14px }
-    .foot{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:14px }
-    .resumo{ font-size:12px; color:var(--muted); margin-top:8px }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="card">
-      <h1>Calculadora de Pace</h1>
-      <p class="sub"><b>Preencha dois campos</b> — e clique em <b>Calcular</b> que eu preencho o terceiro 😉</p>
+  let unit = 'km';
 
-      <div class="topbar">
-        <span class="badge">Presets:</span>
-        <button class="btn" data-preset="5">5K</button>
-        <button class="btn" data-preset="10">10K</button>
-        <button class="btn" data-preset="21.097">21K</button>
-        <button class="btn" data-preset="42.195">42K</button>
-      </div>
+  // ---------- util ----------
+  function isiOS(){ return /iP(ad|hone|od)/i.test(navigator.userAgent); }
+  function normNumber(s){ if(!s) return NaN; const v=(''+s).trim().replace(/\./g,'').replace(',', '.'); const n=Number(v); return isFinite(n)?n:NaN; }
+  function formatPt(n,dec=3){ return n.toFixed(dec).replace(/\.?0+$/,'').replace('.',','); }
 
-      <div class="grid">
-        <div class="field">
-          <label for="tempo" class="label">Tempo (hh:mm:ss)</label>
-          <input id="tempo" class="input" type="text" inputmode="numeric" placeholder="02:59:20" autocomplete="off">
-          <div class="note">Aceita <b>mm:ss</b> (ex.: 45:30) ou minutos (ex.: 105).</div>
-        </div>
-        <div class="field">
-          <label for="dist" class="label">Distância</label>
-          <input id="dist" class="input" type="text" inputmode="decimal" placeholder="42,195">
-        </div>
-        <div class="field">
-          <label for="pace" class="label">Pace (min/uni)</label>
-          <input id="pace" class="input" type="text" inputmode="numeric" placeholder="04:30" autocomplete="off">
-          <div class="note">Formato <b>mm:ss</b> (ex.: 05:15 por km/mi).</div>
-        </div>
-      </div>
-
-      <div class="row">
-        <button class="btn primary" id="calcBtn" disabled>Calcular</button>
-        <button class="btn" id="igBtn">Compartilhar no Instagram</button>
-        <button class="btn" id="dlBtn">Baixar imagem</button>
-        <button class="btn" id="clearBtn">Limpar</button>
-      </div>
-
-      <div class="foot">
-        <span class="badge">Unidade:</span>
-        <div class="seg" id="unitSeg">
-          <button type="button" data-unit="km" aria-pressed="true">km</button>
-          <button type="button" data-unit="mi" aria-pressed="false">mi</button>
-        </div>
-      </div>
-
-      <p class="resumo" id="resumo">—</p>
-    </div>
-  </div>
-
-  <script>
-  (function(){
-    const KM_PER_MI = 1.60934;
-
-    const elTempo = document.getElementById('tempo');
-    const elDist  = document.getElementById('dist');
-    const elPace  = document.getElementById('pace');
-    const unitSeg = document.getElementById('unitSeg');
-    const resumo  = document.getElementById('resumo');
-    const btnCalc = document.getElementById('calcBtn');
-    const btnIG   = document.getElementById('igBtn');
-    const btnDL   = document.getElementById('dlBtn');
-
-    let unit = 'km';
-
-    // util
-    function inIframe(){ try{return window.top!==window.self}catch(_){return true;} }
-    function isiOS(){ return /iP(ad|hone|od)/i.test(navigator.userAgent); }
-
-    function normNumber(s){
-      if(!s) return NaN;
-      const v=(''+s).trim().replace(/\./g,'').replace(',', '.');
-      const n=Number(v);
-      return isFinite(n)?n:NaN;
+  function parseTime(v){
+    if(!v) return NaN; v=(''+v).trim();
+    if(/^\d+(:\d{1,2}){0,2}$/.test(v)){
+      const p=v.split(':').map(Number);
+      if(p.length===3) return p[0]*3600+p[1]*60+p[2];
+      if(p.length===2) return p[0]*60+p[1];
+      if(p.length===1) return p[0]*60;
     }
-    function formatPt(n,dec=3){
-      return n.toFixed(dec).replace(/\.?0+$/,'').replace('.',',');
-    }
+    if(/^\d+(\.\d+)?$/.test(v)) return Number(v)*60;
+    return NaN;
+  }
+  function fmtTime(sec){
+    if(!isFinite(sec)) return '';
+    sec=Math.max(0,Math.round(sec));
+    const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+    return h>0? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
+  }
+  const parsePace = parseTime;
+  function fmtPace(sec){
+    if(!isFinite(sec)) return '';
+    sec=Math.max(0,Math.round(sec));
+    const m=Math.floor(sec/60), s=sec%60;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
 
-    function parseTime(v){
-      if(!v) return NaN; v=(''+v).trim();
-      if(/^\d+(:\d{1,2}){0,2}$/.test(v)){
-        const p=v.split(':').map(Number);
-        if(p.length===3) return p[0]*3600+p[1]*60+p[2];
-        if(p.length===2) return p[0]*60+p[1];
-        if(p.length===1) return p[0]*60;
+  function isTempo(){ return isFinite(parseTime(elTempo.value)); }
+  function isDist(){ const d=normNumber(elDist.value); return isFinite(d)&&d>0; }
+  function isPace(){ return isFinite(parsePace(elPace.value)); }
+  function countValid(){ return (isTempo()?1:0)+(isDist()?1:0)+(isPace()?1:0); }
+
+  function updateResumo(){
+    const t=parseTime(elTempo.value), d=normNumber(elDist.value), p=parsePace(elPace.value);
+    const parts=[];
+    if(isFinite(t)) parts.push(`Tempo: ${fmtTime(t)}`);
+    if(isFinite(d)) parts.push(`Distância: ${formatPt(d,2)} ${unit}`);
+    if(isFinite(p)) parts.push(`Pace: ${fmtPace(p)} /${unit}`);
+    resumo.textContent = parts.length? parts.join(' • ') : '—';
+  }
+  function updateCalcButton(){ btnCalc.disabled = (countValid()!==2); }
+
+  // máscaras (sem zero automático) + canon no blur
+  function maskTempo(){ let d=elTempo.value.replace(/\D/g,'').slice(0,6), out=''; if(d.length>=5) out=d.slice(0,-4)+':'+d.slice(-4,-2)+':'+d.slice(-2); else if(d.length>=3) out=d.slice(0,-2)+':'+d.slice(-2); else out=d; elTempo.value=out; }
+  function maskPace(){ let d=elPace.value.replace(/\D/g,'').slice(0,4); elPace.value=(d.length>=3)? d.slice(0,-2)+':'+d.slice(-2) : d; }
+  function canonTempo(){ const t=parseTime(elTempo.value); if(isFinite(t)) elTempo.value=fmtTime(t); }
+  function canonPace(){ const p=parsePace(elPace.value); if(isFinite(p)) elPace.value=fmtPace(p); }
+
+  elTempo.addEventListener('input', ()=>{ maskTempo(); updateCalcButton(); updateResumo(); });
+  elTempo.addEventListener('blur',  ()=>{ canonTempo(); updateCalcButton(); updateResumo(); });
+  elPace .addEventListener('input', ()=>{ maskPace();  updateCalcButton(); updateResumo(); });
+  elPace .addEventListener('blur',  ()=>{ canonPace(); updateCalcButton(); updateResumo(); });
+  elDist .addEventListener('input', ()=>{ updateCalcButton(); updateResumo(); });
+
+  [elTempo,elDist,elPace].forEach(el=>{
+    el.addEventListener('keydown',e=>{ if(e.key==='Enter' && !btnCalc.disabled){ e.preventDefault(); btnCalc.click(); }});
+  });
+
+  // presets
+  document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{
+    const km=Number(b.dataset.preset);
+    const dist = unit==='mi' ? (km/KM_PER_MI) : km;
+    elDist.value = formatPt(dist);
+    updateCalcButton(); updateResumo();
+  }));
+
+  // unidade no rodapé
+  unitSeg.addEventListener('click', e=>{
+    const btn=e.target.closest('button[data-unit]'); if(!btn) return;
+    const nu=btn.dataset.unit; if(nu===unit) return;
+    [...unitSeg.querySelectorAll('button')].forEach(b=>b.setAttribute('aria-pressed', b===btn?'true':'false'));
+    const d=normNumber(elDist.value), p=parsePace(elPace.value);
+    if(isFinite(d)) elDist.value=formatPt(nu==='mi'? d/KM_PER_MI : d*KM_PER_MI);
+    if(isFinite(p)) elPace.value=fmtPace(nu==='mi'? p*KM_PER_MI : p/KM_PER_MI);
+    unit=nu; updateCalcButton(); updateResumo();
+  });
+
+  // calcular (só com 2 válidos)
+  btnCalc.addEventListener('click', ()=>{
+    const tHas=isTempo(), dHas=isDist(), pHas=isPace();
+    if((tHas?1:0)+(dHas?1:0)+(pHas?1:0)!==2){ alert('Preencha exatamente dois campos'); return; }
+    const t=parseTime(elTempo.value), d=normNumber(elDist.value), p=parsePace(elPace.value);
+    if(!tHas && dHas && pHas)      elTempo.value=fmtTime(d*p);
+    else if(!pHas && tHas && dHas) elPace.value =fmtPace(t/d);
+    else if(!dHas && tHas && pHas) elDist.value =formatPt(t/p);
+    updateCalcButton(); updateResumo();
+  });
+
+  // ====== GERADOR DE PNG TRANSPARENTE COM LOGO OFICIAL ======
+  function drawRoundedRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+  function loadImage(src){ return new Promise((res,rej)=>{ const img=new Image(); img.onload=()=>res(img); img.onerror=rej; img.src=src; }); }
+
+  async function makeResultPNG(){
+    const W=1080, H=1920, cx=90, cy=260, cw=900, ch=1160, radius=28;
+    const canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H;
+    const ctx=canvas.getContext('2d');
+
+    // fundo: completamente transparente (não desenhar)
+
+    await document.fonts.ready;
+    ctx.textBaseline='top';
+
+    // sombra + cartão branco
+    ctx.save();
+    ctx.shadowColor='rgba(0,0,0,.18)'; ctx.shadowBlur=28; ctx.shadowOffsetY=16;
+    ctx.fillStyle='#ffffff'; drawRoundedRect(ctx,cx,cy,cw,ch,radius); ctx.fill();
+    ctx.restore();
+
+    // faixa vermelha superior
+    ctx.fillStyle='#d42f2f';
+    drawRoundedRect(ctx,cx,cy, cw, 84, radius); ctx.fill();
+
+    // wordmark “Baixa Pace®” na faixa
+    ctx.fillStyle='#fff'; ctx.font='700 30px Blinker, sans-serif';
+    ctx.fillText('Baixa Pace®', cx+90, cy+26);
+
+    // LOGO oficial no canto superior direito (sobre fundo branco)
+    try{
+      const logo = await loadImage(LOGO_DATA_URL);
+      const maxBox = 150; // tamanho máximo do lado
+      const ratio = Math.min(maxBox/logo.width, maxBox/logo.height);
+      const w = logo.width*ratio, h=logo.height*ratio;
+      const lx = cx + cw - w - 40, ly = cy + 110;
+      ctx.drawImage(logo, lx, ly, w, h);
+    }catch(e){ /* se falhar, segue sem o logo */ }
+
+    // título
+    ctx.fillStyle='#141414'; ctx.font='700 56px Blinker, sans-serif';
+    ctx.fillText('RESULTADO', cx+40, cy+120);
+
+    // linha separadora
+    ctx.strokeStyle='#eee'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(cx+40, cy+200); ctx.lineTo(cx+cw-40, cy+200); ctx.stroke();
+
+    // valores
+    const t=parseTime(elTempo.value), d=normNumber(elDist.value), p=parsePace(elPace.value);
+    const tempo = isFinite(t)? fmtTime(t) : '--:--';
+    const dist  = isFinite(d)? `${formatPt(d,2)} ${unit}` : '--';
+    const pace  = isFinite(p)? `${fmtPace(p)} /${unit}` : '--';
+
+    // grid 3 colunas
+    const colW = (cw-80)/3; const baseX = cx+40, baseY = cy+230;
+    function drawField(ix, label, value){
+      const x = baseX + ix*colW;
+      ctx.fillStyle='#777'; ctx.font='700 24px Blinker, sans-serif'; ctx.fillText(label.toUpperCase(), x, baseY);
+      ctx.fillStyle='#141414'; ctx.font='700 64px Blinker, sans-serif'; ctx.fillText(value, x, baseY+36);
+    }
+    drawField(0,'Tempo', tempo);
+    drawField(1,'Distância', dist);
+    drawField(2,'Pace', pace);
+
+    // resumo grande
+    const resumoText = `Tempo: ${tempo} • Distância: ${isFinite(d)?formatPt(d,2):'--'} ${unit} • Pace: ${isFinite(p)?fmtPace(p):'--'} /${unit}`;
+    ctx.fillStyle='#000'; ctx.font='700 40px Blinker, sans-serif';
+    const maxW = cw-80, rx = cx+40, ry = cy+420;
+    wrapFillText(ctx, resumoText, rx, ry, maxW, 50);
+
+    // rodapé
+    ctx.fillStyle='#d42f2f'; ctx.font='600 28px Blinker, sans-serif';
+    ctx.fillText('baixapace.com.br', cx+40, cy+ch-60);
+
+    // fileira externa do cartão
+    ctx.strokeStyle='#eaeaea'; ctx.lineWidth=2; drawRoundedRect(ctx,cx,cy,cw,ch,radius); ctx.stroke();
+
+    return new Promise(res=> canvas.toBlob(b=>res(b), 'image/png', 1));
+
+    function wrapFillText(ctx, text, x, y, maxWidth, lineHeight){
+      const words=text.split(' '); let line='', yy=y;
+      for(const w of words){
+        const test=line?line+' '+w:w;
+        if(ctx.measureText(test).width<=maxWidth){ line=test; }
+        else{ ctx.fillText(line,x,yy); yy+=lineHeight; line=w; }
       }
-      if(/^\d+(\.\d+)?$/.test(v)) return Number(v)*60;
-      return NaN;
+      if(line) ctx.fillText(line,x,yy);
     }
-    function fmtTime(sec){
-      if(!isFinite(sec)) return '';
-      sec=Math.max(0,Math.round(sec));
-      const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
-      return h>0? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
+  }
+
+  // compartilhar (PNG transparente). Em navegadores que bloqueiam share: abre nova aba p/ salvar.
+  async function sharePNG(){
+    const blob = await makeResultPNG();
+    const file = new File([blob], 'pace-result.png', { type:'image/png' });
+    try{
+      if(navigator.canShare && navigator.canShare({ files:[file] })){
+        await navigator.share({ files:[file], title:'Resultado — Baixa Pace', text:'Meu resultado na Calculadora de Pace' });
+      }else{
+        const r=new FileReader(); r.onload=()=>window.open(r.result,'_blank'); r.readAsDataURL(blob);
+      }
+    }catch(_){}
+  }
+
+  async function downloadPNG(){
+    const blob = await makeResultPNG();
+    if(isiOS()){
+      const r=new FileReader(); r.onload=()=>window.open(r.result,'_blank'); r.readAsDataURL(blob);
+    }else{
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='pace-result.png';
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
     }
-    const parsePace = parseTime;
-    function fmtPace(sec){
-      if(!isFinite(sec)) return '';
-      sec=Math.max(0,Math.round(sec));
-      const m=Math.floor(sec/60), s=sec%60;
-      return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-    }
+  }
 
-    function isTempo(){ return isFinite(parseTime(elTempo.value)); }
-    function isDist(){ const d=normNumber(elDist.value); return isFinite(d)&&d>0; }
-    function isPace(){ return isFinite(parsePace(elPace.value)); }
-    function countValid(){ return (isTempo()?1:0)+(isDist()?1:0)+(isPace()?1:0); }
+  // binds
+  btnIG.addEventListener('click', sharePNG);
+  btnDL.addEventListener('click', downloadPNG);
 
-    function updateResumo(){
-      const t=parseTime(elTempo.value), d=normNumber(elDist.value), p=parsePace(elPace.value);
-      const parts=[];
-      if(isFinite(t)) parts.push(`Tempo: ${fmtTime(t)}`);
-      if(isFinite(d)) parts.push(`Distância: ${formatPt(d,2)} ${unit}`);
-      if(isFinite(p)) parts.push(`Pace: ${fmtPace(p)} /${unit}`);
-      resumo.textContent = parts.length? parts.join(' • ') : '—';
-    }
-    function updateCalcButton(){ btnCalc.disabled = (countValid()!==2); }
+  // init
+  function isTempo(){ return isFinite(parseTime(elTempo.value)); }
+  function isDist(){ const d=normNumber(elDist.value); return isFinite(d)&&d>0; }
+  function isPace(){ return isFinite(parsePace(elPace.value)); }
+  updateCalcButton(); updateResumo();
 
-    // máscaras leves (sem zero automático)
-    function maskTempo(){
-      let d=elTempo.value.replace(/\D/g,'').slice(0,6), out='';
-      if(d.length>=5) out=d.slice(0,-4)+':'+d.slice(-4,-2)+':'+d.slice(-2);
-      else if(d.length>=3) out=d.slice(0,-2)+':'+d.slice(-2);
-      else out=d;
-      elTempo.value=out;
-    }
-    function maskPace(){
-      let d=elPace.value.replace(/\D/g,'').slice(0,4);
-      elPace.value = (d.length>=3)? d.slice(0,-2)+':'+d.slice(-2) : d;
-    }
-    function canonTempo(){ const t=parseTime(elTempo.value); if(isFinite(t)) elTempo.value=fmtTime(t); }
-    function canonPace(){ const p=parsePace(elPace.value); if(isFinite(p)) elPace.value=fmtPace(p); }
+})();
+</script>
 
-    elTempo.addEventListener('input', ()=>{ maskTempo(); updateCalcButton(); updateResumo(); });
-    elTempo.addEventListener('blur',  ()=>{ canonTempo(); updateCalcButton(); updateResumo(); });
-    elPace .addEventListener('input', ()=>{ maskPace();  updateCalcButton(); updateResumo(); });
-    elPace .addEventListener('blur',  ()=>{ canonPace(); updateCalcButton(); updateResumo(); });
-    elDist .addEventListener('input', ()=>{ updateCalcButton(); updateResumo(); });
-
-    [elTempo,elDist,elPace].forEach(el=>{
-      el.addEventListener('keydown',e=>{ if(e.key==='Enter' && !btnCalc.disabled){ e.preventDefault(); btnCalc.click(); }});
-    });
-
-    // presets
-    document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{
-      const km=Number(b.dataset.preset);
-      const dist = unit==='mi' ? (km/KM_PER_MI) : km;
-      elDist.value = formatPt(dist);
-      updateCalcButton(); updateResumo();
-    }));
-
-    // unidade no rodapé
-    unitSeg.addEventListener('click', e=>{
-      const btn=e.target.closest('button[data-unit]'); if(!btn) return;
-      const nu=btn.dataset.unit; if(nu===unit) return;
-      [...unitSeg.querySelectorAll('button')].forEach(b=>b.setAttribute('aria-pressed', b===btn?'true':'false'));
-      const d=normNumber(elDist.value), p=parsePace(elPace.value);
-      if(isFinite(d)) elDist.value=formatPt(nu==='mi'? d/KM_PER_MI : d*KM_PER_MI);
-      if(isFinite(p)) elPace.value=fmtPace(nu==='mi'? p*KM_PER_MI : p/KM_PER_MI);
-      unit=nu; updateCalcButton(); updateResumo();
-    });
-
-    // calcular (só com 2 válidos)
-    btnCalc.addEventListener('click', ()=>{
-      const tHas=isTempo(), dHas=isDist(), pHas=isPace();
-      if((tHas?1:0)+(dHas?1:0)+(pHas?1:0)!==2){ alert('Preencha exatamente dois campos'); return; }
-      const t=parseTime(elTempo.value), d=normNumber(elDist.value), p=parsePace(elPace.value);
-      if(!tHas && dHas && pHas)      elTempo.value=fmtTime(d*p);
-      else if(!pHas && tHas && dHas) elPace.value =fmtPace(t/d);
-      else if(!dHas && tHas && pHas) elDist.value =formatPt(t/p);
-      updateCalcButton(); updateResumo();
-    });
-
-    // imagem para stories
-    async function makeStoryBlob(){
-      const W=1080,H=1920,p=60, canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H;
-      const ctx=canvas.getContext('2d');
-      const bg1='#ffffff', bg2='#ffe9e9', fg='#141414', acc='#d42f2f';
-      const g=ctx.createLinearGradient(0,0,W,H); g.addColorStop(0,bg1); g.addColorStop(1,bg2);
-      ctx.fillStyle=g; ctx.fillRect(0,0,W,H); await document.fonts.ready;
-
-      const text = resumo.textContent && resumo.textContent!=='—'
-        ? resumo.textContent
-        : 'Preencha dois campos e clique em Calcular para gerar seu resultado.';
-
-      ctx.fillStyle=fg;
-      ctx.font='700 56px Blinker, sans-serif'; ctx.fillText('Baixa Pace®', p, p+20);
-      ctx.font='700 72px Blinker, sans-serif'; ctx.fillText('Calculadora de Pace', p, p+140);
-      ctx.font='600 54px Blinker, sans-serif';
-      const lines=(t=>{const w=t.split(' '),o=[];let l='';for(const x of w){const test=l?l+' '+x:x;if(ctx.measureText(test).width<=W-p*2){l=test}else{o.push(l);l=x}}if(l)o.push(l);return o;})(text);
-      let y=p+260; for(const l of lines){ ctx.fillText(l,p,y); y+=76; }
-      ctx.font='400 40px Blinker, sans-serif'; ctx.fillStyle=acc;
-      ctx.fillText('Compartilhe seu tempo e marque @baixapace', p, H-p);
-
-      return new Promise(res=> canvas.toBlob(b=>res(b),'image/jpeg',0.95));
-    }
-
-    function blobToDataURL(blob){
-      return new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(blob); });
-    }
-
-    // compartilhar: tenta Web Share; se bloqueado no iframe, abre a imagem em nova aba
-    btnIG.addEventListener('click', async ()=>{
-      try{
-        const blob = await makeStoryBlob();
-        const file = new File([blob],'pace-story.jpg',{type:'image/jpeg'});
-        if(navigator.canShare && navigator.canShare({ files:[file] })){
-          await navigator.share({ files:[file], title:'Calculadora de Pace — Baixa Pace', text:'Meu resultado na Calculadora de Pace' });
-        }else{
-          const url = await blobToDataURL(blob);
-          window.open(url,'_blank'); // no iOS a pessoa toca “Salvar Imagem” (vai para Fotos)
-        }
-      }catch(e){}
-    });
-
-    // baixar: no iOS, nova aba (Salvar Imagem). No resto, download direto.
-    btnDL.addEventListener('click', async ()=>{
-      try{
-        const blob = await makeStoryBlob();
-        if(isiOS()){
-          const url = await blobToDataURL(blob);
-          window.open(url,'_blank');
-        }else{
-          const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='pace-story.jpg';
-          document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
-        }
-      }catch(e){}
-    });
-
-  })();
-  </script>
-</body>
-</html>
