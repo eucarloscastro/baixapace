@@ -1,4 +1,4 @@
-<!-- Baixa Pace® — Calculadora de Pace (com compartilhamento em Stories) -->
+<!-- Baixa Pace® — Calculadora de Pace (Stories: Instagram + Baixar + Tema claro/escuro) -->
 <div id="bp-pace-app" class="bp-pace">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Blinker:wght@400;600;700&display=swap');
@@ -10,7 +10,6 @@
     .bp-title{font-size:clamp(22px,2.4vw,28px);margin:0 0 6px;font-weight:700;letter-spacing:.2px}
     .bp-sub{color:#777;margin:0 0 16px}
 
-    /* NOVO: barra superior com unidade + presets */
     .bp-topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 16px}
     .bp-group{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .bp-badge{font-size:12px;font-weight:700;padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #e7e7e7}
@@ -18,6 +17,7 @@
     .bp-seg button{padding:10px 14px;background:#fff;border:1px solid #e7e7e7;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.05)}
     .bp-seg button[aria-pressed="true"]{background:#d42f2f;color:#fff;box-shadow:0 4px 12px rgba(212,47,47,.35)}
     .bp-btn{font-weight:700;border:1px solid #e7e7e7;background:#fff;padding:10px 14px;border-radius:12px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.06)}
+    .bp-btn.primary{background:#d42f2f;color:#fff;border-color:transparent}
 
     .bp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
     @media (max-width:880px){.bp-grid{grid-template-columns:1fr}}
@@ -30,6 +30,297 @@
 
     .bp-row{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px}
     .bp-actions{display:flex;gap:10px;flex-wrap:wrap}
-    .bp-btn.primary{background:#d42f2f;color:#fff;border-color:transparent}
 
-    .bp-resumo{font-size:12px;c
+    .bp-resumo{font-size:12px;color:#777;margin-top:8px}
+    .bp-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#141414;color:#fff;padding:10px 14px;border-radius:10px;font-weight:700;opacity:0;pointer-events:none;transition:all .25s ease;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+    .bp-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  </style>
+
+  <div class="bp-wrap">
+    <div class="bp-card">
+      <h1 class="bp-title">Calculadora de Pace</h1>
+      <p class="bp-sub">Preencha <b>dois</b> campos — eu calculo o terceiro. Agora com Story claro/escuro e baixar imagem.</p>
+
+      <!-- TOPBAR: Unidade + Presets + Tema do Story -->
+      <div class="bp-topbar">
+        <div class="bp-group">
+          <span class="bp-badge">Unidade:</span>
+          <div class="bp-seg" id="unitSeg">
+            <button type="button" data-unit="km" aria-pressed="true">km</button>
+            <button type="button" data-unit="mi" aria-pressed="false">mi</button>
+          </div>
+        </div>
+        <div class="bp-group">
+          <span class="bp-badge">Presets:</span>
+          <button class="bp-btn" data-preset="5">5K</button>
+          <button class="bp-btn" data-preset="10">10K</button>
+          <button class="bp-btn" data-preset="21.097">21K</button>
+          <button class="bp-btn" data-preset="42.195">42K</button>
+        </div>
+        <div class="bp-group">
+          <span class="bp-badge">Story:</span>
+          <div class="bp-seg" id="themeSeg">
+            <button type="button" data-theme="light" aria-pressed="true">claro</button>
+            <button type="button" data-theme="dark" aria-pressed="false">escuro</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bp-grid">
+        <div class="bp-field">
+          <label class="bp-label" for="tempo">Tempo (hh:mm:ss)</label>
+          <input id="tempo" class="bp-input" type="text" placeholder="01:45:30" inputmode="numeric" autocomplete="off">
+          <div class="bp-note">Aceita <b>mm:ss</b> (ex.: 45:30) ou minutos (ex.: 105).</div>
+        </div>
+        <div class="bp-field">
+          <label class="bp-label" for="dist">Distância</label>
+          <input id="dist" class="bp-input" type="number" step="0.01" min="0" placeholder="10.00">
+        </div>
+        <div class="bp-field">
+          <label class="bp-label" for="pace">Pace (min/uni)</label>
+          <input id="pace" class="bp-input" type="text" placeholder="04:30" inputmode="numeric" autocomplete="off">
+          <div class="bp-note">Formato <b>mm:ss</b> (ex.: 05:15 por km/mi).</div>
+        </div>
+      </div>
+
+      <div class="bp-row">
+        <div class="bp-actions">
+          <button class="bp-btn" id="copyBtn">Copiar resultado</button>
+          <button class="bp-btn primary" id="igBtn">Compartilhar no Instagram</button>
+          <button class="bp-btn" id="dlBtn">Baixar imagem</button>
+          <button class="bp-btn" id="clearBtn">Limpar</button>
+        </div>
+      </div>
+
+      <p class="bp-resumo" id="resumo">—</p>
+    </div>
+  </div>
+
+  <div class="bp-toast" id="bp-toast">Copiado!</div>
+
+  <script>
+    (function(){
+      const KM_PER_MI = 1.60934;
+
+      const elTempo = document.getElementById('tempo');
+      const elDist  = document.getElementById('dist');
+      const elPace  = document.getElementById('pace');
+      const unitSeg = document.getElementById('unitSeg');
+      const themeSeg= document.getElementById('themeSeg');
+      const resumo  = document.getElementById('resumo');
+      const toast   = document.getElementById('bp-toast');
+      const btnIG   = document.getElementById('igBtn');
+      const btnDL   = document.getElementById('dlBtn');
+
+      let unit = 'km';
+      let storyTheme = 'light';
+      let lastChanged = null;
+
+      function parseTime(v){
+        if(!v) return NaN; v = (''+v).trim();
+        if(/^\d+(:\d{1,2}){0,2}$/.test(v)){
+          const parts = v.split(':').map(Number);
+          if(parts.length===3) return parts[0]*3600 + parts[1]*60 + parts[2];
+          if(parts.length===2) return parts[0]*60 + parts[1];
+          if(parts.length===1) return parts[0]*60;
+        }
+        if(/^\d+(\.\d+)?$/.test(v)) return Number(v)*60;
+        return NaN;
+      }
+      function fmtTime(sec){
+        if(!isFinite(sec)) return '';
+        sec = Math.max(0, Math.round(sec));
+        const h = Math.floor(sec/3600);
+        const m = Math.floor((sec%3600)/60);
+        const s = sec%60;
+        const mm = String(m).padStart(2,'0');
+        const ss = String(s).padStart(2,'0');
+        return h>0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
+      }
+      function parsePace(v){ return parseTime(v); }
+      function fmtPace(sec){
+        if(!isFinite(sec)) return '';
+        sec = Math.max(0, Math.round(sec));
+        const m = Math.floor(sec/60), s = sec%60;
+        return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      }
+
+      function updateResumo(){
+        const t = parseTime(elTempo.value);
+        const d = Number(elDist.value);
+        const p = parsePace(elPace.value);
+        const u = unit;
+        const parts = [];
+        if(isFinite(t)) parts.push(`Tempo: ${fmtTime(t)}`);
+        if(isFinite(d)) parts.push(`Distância: ${(+d).toFixed(2)} ${u}`);
+        if(isFinite(p)) parts.push(`Pace: ${fmtPace(p)} /${u}`);
+        resumo.textContent = parts.length ? parts.join(' • ') : '—';
+      }
+
+      function recalc(){
+        const t = parseTime(elTempo.value);
+        const d = Number(elDist.value);
+        const p = parsePace(elPace.value);
+        const hasT = isFinite(t);
+        const hasD = isFinite(d) && d>0;
+        const hasP = isFinite(p);
+
+        if( (hasD && hasP) && (!hasT || lastChanged!=='tempo') ){
+          elTempo.value = fmtTime(d * p);
+        } else if( (hasT && hasD) && (!hasP || lastChanged!=='pace') ){
+          elPace.value = fmtPace(t / d);
+        } else if( (hasT && hasP) && (!hasD || lastChanged!=='dist') ){
+          const dist = t / p;
+          elDist.value = (isFinite(dist)? dist : 0).toFixed(2);
+        }
+        updateResumo();
+      }
+
+      unitSeg.addEventListener('click', (e)=>{
+        const btn = e.target.closest('button[data-unit]'); if(!btn) return;
+        const newUnit = btn.dataset.unit; if(newUnit===unit) return;
+        [...unitSeg.querySelectorAll('button')].forEach(b=>b.setAttribute('aria-pressed', b===btn ? 'true':'false'));
+
+        const d = Number(elDist.value);
+        const p = parsePace(elPace.value);
+        if(isFinite(d) && d>0) elDist.value = (newUnit==='mi' ? d / KM_PER_MI : d * KM_PER_MI).toFixed(2);
+        if(isFinite(p)) elPace.value = fmtPace(newUnit==='mi' ? p*KM_PER_MI : p/KM_PER_MI);
+        unit = newUnit;
+        recalc();
+      });
+
+      themeSeg.addEventListener('click', (e)=>{
+        const btn = e.target.closest('button[data-theme]'); if(!btn) return;
+        const th = btn.dataset.theme; if(th===storyTheme) return;
+        [...themeSeg.querySelectorAll('button')].forEach(b=>b.setAttribute('aria-pressed', b===btn ? 'true':'false'));
+        storyTheme = th;
+      });
+
+      document.querySelectorAll('[data-preset]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const km = Number(btn.dataset.preset);
+          const dist = unit==='mi' ? (km / KM_PER_MI) : km;
+          elDist.value = dist.toFixed(3).replace(/\.?0+$/,'');
+          lastChanged = 'dist';
+          recalc();
+        });
+      });
+
+      elTempo.addEventListener('input', ()=>{ lastChanged='tempo'; recalc(); });
+      elDist .addEventListener('input', ()=>{ lastChanged='dist';  recalc(); });
+      elPace .addEventListener('input', ()=>{ lastChanged='pace';  recalc(); });
+
+      function showToast(msg='Copiado!'){
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(()=>toast.classList.remove('show'), 1400);
+      }
+
+      document.getElementById('copyBtn').addEventListener('click', async ()=>{
+        try{ await navigator.clipboard.writeText(resumo.textContent); showToast('Copiado!'); }
+        catch(e){ showToast('Não foi possível copiar'); }
+      });
+      document.getElementById('clearBtn').addEventListener('click', ()=>{
+        elTempo.value=''; elDist.value=''; elPace.value='';
+        lastChanged=null; updateResumo();
+      });
+
+      // Geração da imagem 1080x1920 (tema claro/escuro)
+      async function makeStoryImage(text, theme){
+        const W=1080, H=1920, p=60;
+        const canvas = document.createElement('canvas');
+        canvas.width=W; canvas.height=H;
+        const ctx = canvas.getContext('2d');
+
+        // tema
+        const isDark = theme==='dark';
+        const bg1 = isDark ? '#101014' : '#ffffff';
+        const bg2 = isDark ? '#2a2a33' : '#ffe9e9';
+        const fg  = isDark ? '#ffffff' : '#141414';
+        const acc = isDark ? '#ff7070' : '#d42f2f';
+
+        // fundo
+        const g = ctx.createLinearGradient(0,0,W,H);
+        g.addColorStop(0,bg1); g.addColorStop(1,bg2);
+        ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+
+        await document.fonts.ready;
+
+        // marca
+        ctx.fillStyle = fg;
+        ctx.font = '700 56px Blinker, sans-serif';
+        ctx.fillText('Baixa Pace®', p, p+20);
+
+        // título
+        ctx.font = '700 72px Blinker, sans-serif';
+        ctx.fillText('Calculadora de Pace', p, p+140);
+
+        // resultado
+        ctx.font = '600 54px Blinker, sans-serif';
+        const lines = wrapText(ctx, text, W - p*2);
+        let y = p+260;
+        lines.forEach(l => { ctx.fillText(l, p, y); y += 76; });
+
+        // rodapé
+        ctx.font = '400 40px Blinker, sans-serif';
+        ctx.fillStyle = acc;
+        ctx.fillText('Compartilhe seu tempo e marque @baixapace', p, H - p);
+
+        return new Promise(resolve=> canvas.toBlob(b=>resolve(b), 'image/jpeg', 0.95));
+
+        function wrapText(ctx, t, maxW){
+          const words = t.split(' ');
+          let line='', out=[];
+          for(const w of words){
+            const test = line ? line + ' ' + w : w;
+            if(ctx.measureText(test).width <= maxW){ line = test; }
+            else { out.push(line); line = w; }
+          }
+          if(line) out.push(line);
+          return out;
+        }
+      }
+
+      async function buildBlob(){
+        const text = resumo.textContent && resumo.textContent!=='—'
+          ? resumo.textContent
+          : 'Defina Tempo + Distância ou Tempo + Pace para gerar seu resultado.';
+        return await makeStoryImage(text, storyTheme);
+      }
+
+      btnIG.addEventListener('click', async ()=>{
+        try{
+          const blob = await buildBlob();
+          const file = new File([blob], 'pace-story.jpg', { type: 'image/jpeg' });
+          if(navigator.canShare && navigator.canShare({ files:[file] })){
+            await navigator.share({
+              files:[file],
+              title:'Calculadora de Pace — Baixa Pace',
+              text:'Meu resultado na Calculadora de Pace'
+            });
+          }else{
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'pace-story.jpg';
+            document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+            showToast('Imagem baixada (poste nos Stories)');
+          }
+        }catch(e){ showToast('Não foi possível compartilhar'); }
+      });
+
+      btnDL.addEventListener('click', async ()=>{
+        try{
+          const blob = await buildBlob();
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'pace-story.jpg';
+          document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+          showToast('Imagem baixada');
+        }catch(e){ showToast('Falha ao baixar'); }
+      });
+
+      // init
+      updateResumo();
+    })();
+  </script>
+</div>
