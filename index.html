@@ -1,301 +1,46 @@
-<!-- Baixa Pace® — Calculadora de Pace (fix iOS backspace + máscara sem pad) -->
-<div id="bp-pace-app" class="bp-pace">
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Blinker:wght@400;600;700&display=swap');
-    #bp-pace-app { font-family:'Blinker',system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,sans-serif; color:#141414 }
-    #bp-pace-app * { box-sizing:border-box }
-    .bp-wrap{max-width:880px;margin:40px auto;padding:24px}
-    .bp-card{background:#fff;border:1px solid #e7e7e7;border-radius:18px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.06)}
-    .bp-title{font-size:clamp(22px,2.4vw,28px);margin:0 0 6px;font-weight:700;letter-spacing:.2px}
-    .bp-sub{color:#555;margin:0 0 16px}
+<script>
+(function(){
+  function findFrame(){
+    // ajuste o seletor se tiver um id no iframe (melhor colocar id="bp-pace-iframe")
+    return document.getElementById('bp-pace-iframe') ||
+           document.querySelector('iframe[src*="eucarloscastro.github.io/baixapace"]') ||
+           document.querySelector('iframe[src*="calculadora-de-pace"]');
+  }
+  function applyHeight(px){
+    var f=findFrame(); if(!f) return;
+    f.style.height = Math.max(600, px) + 'px';
+    f.setAttribute('scrolling','no'); f.style.overflow='hidden';
+  }
+  function abToFile(buffer, name, mime){
+    return new File([new Uint8Array(buffer)], name, { type: mime });
+  }
 
-    .bp-topbar{display:flex;justify-content:flex-start;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 16px}
-    .bp-badge{font-size:12px;font-weight:700;padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #e7e7e7}
-    .bp-btn{font-weight:700;border:1px solid #e7e7e7;background:#fff;padding:10px 14px;border-radius:12px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.06)}
-    .bp-btn.primary{background:#d42f2f;color:#fff;border-color:transparent}
-    .bp-btn[disabled]{opacity:.5;cursor:not-allowed;box-shadow:none}
-
-    .bp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-    @media (max-width:880px){.bp-grid{grid-template-columns:1fr}}
-
-    .bp-field{position:relative}
-    .bp-label{display:block;font-weight:700;margin:0 0 6px}
-    .bp-input{width:100%;padding:16px;border-radius:12px;border:1px solid #e7e7e7;font-size:18px;outline:none;transition:border-color .2s,box-shadow .2s}
-    .bp-input:focus{border-color:#c9c9c9;box-shadow:0 0 0 4px rgba(0,0,0,.05)}
-    .bp-note{font-size:12px;color:#555;margin-top:8px}
-
-    .bp-row{display:flex;justify-content:flex-start;gap:10px;flex-wrap:wrap;margin-top:14px}
-    .bp-resumo{font-size:12px;color:#555;margin-top:8px}
-    .bp-seg{display:flex;background:#f3f3f3;border-radius:12px;padding:4px;gap:4px}
-    .bp-seg button{padding:10px 14px;background:#fff;border:1px solid #e7e7e7;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.05)}
-    .bp-seg button[aria-pressed="true"]{background:#d42f2f;color:#fff;box-shadow:0 4px 12px rgba(212,47,47,.35)}
-
-    .bp-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
-    .bp-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#141414;color:#fff;padding:10px 14px;border-radius:10px;font-weight:700;opacity:0;pointer-events:none;transition:all .25s ease;box-shadow:0 6px 18px rgba(0,0,0,.25)}
-    .bp-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-  </style>
-
-  <div class="bp-wrap">
-    <div class="bp-card">
-      <h1 class="bp-title">Calculadora de Pace</h1>
-      <p class="bp-sub"><b>Preencha dois campos</b> — e clique em <b>Calcular</b> que eu preencho o terceiro 😉</p>
-
-      <div class="bp-topbar">
-        <span class="bp-badge">Presets:</span>
-        <button class="bp-btn" data-preset="5">5K</button>
-        <button class="bp-btn" data-preset="10">10K</button>
-        <button class="bp-btn" data-preset="21.097">21K</button>
-        <button class="bp-btn" data-preset="42.195">42K</button>
-      </div>
-
-      <div class="bp-grid">
-        <div class="bp-field">
-          <label class="bp-label" for="tempo">Tempo (hh:mm:ss)</label>
-          <input id="tempo" class="bp-input" type="text" inputmode="numeric" placeholder="02:59:20" autocomplete="off">
-          <div class="bp-note">Aceita <b>mm:ss</b> (ex.: 45:30) ou minutos (ex.: 105).</div>
-        </div>
-        <div class="bp-field">
-          <label class="bp-label" for="dist">Distância</label>
-          <input id="dist" class="bp-input" type="text" inputmode="decimal" placeholder="42,195">
-        </div>
-        <div class="bp-field">
-          <label class="bp-label" for="pace">Pace (min/uni)</label>
-          <input id="pace" class="bp-input" type="text" inputmode="numeric" placeholder="04:30" autocomplete="off">
-          <div class="bp-note">Formato <b>mm:ss</b> (ex.: 05:15 por km/mi).</div>
-        </div>
-      </div>
-
-      <div class="bp-row">
-        <button class="bp-btn primary" id="calcBtn" disabled>Calcular</button>
-        <button class="bp-btn" id="igBtn">Compartilhar no Instagram</button>
-        <button class="bp-btn" id="dlBtn">Baixar imagem</button>
-        <button class="bp-btn" id="clearBtn">Limpar</button>
-      </div>
-
-      <div class="bp-foot">
-        <span class="bp-badge">Unidade:</span>
-        <div class="bp-seg" id="unitSeg">
-          <button type="button" data-unit="km" aria-pressed="true">km</button>
-          <button type="button" data-unit="mi" aria-pressed="false">mi</button>
-        </div>
-      </div>
-
-      <p class="bp-resumo" id="resumo">—</p>
-    </div>
-  </div>
-
-  <div class="bp-toast" id="bp-toast">Copiado!</div>
-
-  <script>
-    (function(){
-      const KM_PER_MI = 1.60934;
-
-      const elTempo = document.getElementById('tempo');
-      const elDist  = document.getElementById('dist');
-      const elPace  = document.getElementById('pace');
-      const unitSeg = document.getElementById('unitSeg');
-      const resumo  = document.getElementById('resumo');
-      const toast   = document.getElementById('bp-toast');
-      const btnCalc = document.getElementById('calcBtn');
-      const btnIG   = document.getElementById('igBtn');
-      const btnDL   = document.getElementById('dlBtn');
-
-      let unit = 'km';
-
-      // --- helpers ---
-      function normNumber(str){
-        if(!str) return NaN;
-        const v = (''+str).trim().replace(/\./g,'').replace(',', '.');
-        const n = Number(v);
-        return isFinite(n) ? n : NaN;
-      }
-      function formatPt(n, dec=3){
-        return n.toFixed(dec).replace(/\.?0+$/,'').replace('.', ',');
-      }
-
-      function parseTime(v){
-        if(!v) return NaN; v = (''+v).trim();
-        if(/^\d+(:\d{1,2}){0,2}$/.test(v)){
-          const parts = v.split(':').map(Number);
-          if(parts.length===3) return parts[0]*3600 + parts[1]*60 + parts[2];
-          if(parts.length===2) return parts[0]*60 + parts[1];
-          if(parts.length===1) return parts[0]*60;
+  window.addEventListener('message', async function(e){
+    if(!e || !e.data) return;
+    if(e.data.type==='bp-resize' && typeof e.data.height==='number'){
+      applyHeight(e.data.height);
+    }
+    if(e.data.type==='bp-share' && e.data.buffer){
+      try{
+        var file = abToFile(e.data.buffer, e.data.name||'pace-story.jpg', e.data.mime||'image/jpeg');
+        if(navigator.canShare && navigator.canShare({ files:[file] })){
+          await navigator.share({ files:[file], title:'Calculadora de Pace — Baixa Pace', text:'Meu resultado na Calculadora de Pace' });
+        }else{
+          // fallback: abre em nova aba (usuário salva manualmente)
+          var url = URL.createObjectURL(file);
+          window.open(url,'_blank');
+          setTimeout(()=>URL.revokeObjectURL(url), 12000);
         }
-        if(/^\d+(\.\d+)?$/.test(v)) return Number(v)*60;
-        return NaN;
-      }
-      function fmtTime(sec){
-        if(!isFinite(sec)) return '';
-        sec = Math.max(0, Math.round(sec));
-        const h = Math.floor(sec/3600);
-        const m = Math.floor((sec%3600)/60);
-        const s = sec%60;
-        const mm = String(m).padStart(2,'0');
-        const ss = String(s).padStart(2,'0');
-        return h>0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
-      }
-      function parsePace(v){ return parseTime(v); }
-      function fmtPace(sec){
-        if(!isFinite(sec)) return '';
-        sec = Math.max(0, Math.round(sec));
-        const m = Math.floor(sec/60), s = sec%60;
-        return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-      }
+      }catch(_){}
+    }
+    if(e.data.type==='bp-open' && e.data.dataURL){
+      // abre nova aba com a imagem (iOS -> "Salvar Imagem")
+      window.open(e.data.dataURL, '_blank');
+    }
+  });
 
-      function isTempo(){ return isFinite(parseTime(elTempo.value)); }
-      function isDist(){ const d = normNumber(elDist.value); return isFinite(d) && d>0; }
-      function isPace(){ return isFinite(parsePace(elPace.value)); }
-      function countValid(){ return (isTempo()?1:0) + (isDist()?1:0) + (isPace()?1:0); }
+  // ajuste inicial de altura preventivo
+  setTimeout(()=>applyHeight(900), 400);
+})();
+</script>
 
-      function updateResumo(){
-        const t = parseTime(elTempo.value);
-        const d = normNumber(elDist.value);
-        const p = parsePace(elPace.value);
-        const u = unit;
-        const parts = [];
-        if(isFinite(t)) parts.push(`Tempo: ${fmtTime(t)}`);
-        if(isFinite(d)) parts.push(`Distância: ${formatPt(d,2)} ${u}`);
-        if(isFinite(p)) parts.push(`Pace: ${fmtPace(p)} /${u}`);
-        resumo.textContent = parts.length ? parts.join(' • ') : '—';
-      }
-      function updateCalcButton(){ btnCalc.disabled = (countValid() !== 2); }
-      function showToast(msg='Copiado!'){ toast.textContent=msg; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'), 1400); }
-
-      // --- MÁSCARAS SEM PADDING (resolvem o backspace do iOS) ---
-      function maskTempo(){
-        // pega só dígitos e limita 6 (hhmmss)
-        let d = elTempo.value.replace(/\D/g,'').slice(0,6);
-        let out = '';
-        if(d.length >= 5){          // h:mm:ss (horas sem zero à esquerda)
-          out = d.slice(0,-4) + ':' + d.slice(-4,-2) + ':' + d.slice(-2);
-        }else if(d.length >= 3){    // m:ss ou mm:ss
-          out = d.slice(0,-2) + ':' + d.slice(-2);
-        }else{                      // 1-2 dígitos: deixa cru (minutos)
-          out = d;
-        }
-        elTempo.value = out;
-      }
-      function maskPace(){
-        let d = elPace.value.replace(/\D/g,'').slice(0,4);
-        let out = (d.length >= 3) ? (d.slice(0,-2) + ':' + d.slice(-2)) : d; // m:ss ou mm:ss
-        elPace.value = out;
-      }
-      // normaliza no blur (formato bonito)
-      function canonTempo(){ const t=parseTime(elTempo.value); if(isFinite(t)) elTempo.value=fmtTime(t); }
-      function canonPace(){ const p=parsePace(elPace.value); if(isFinite(p)) elPace.value=fmtPace(p); }
-
-      elTempo.addEventListener('input', ()=>{ maskTempo(); updateCalcButton(); updateResumo(); });
-      elTempo.addEventListener('blur',  ()=>{ canonTempo(); updateCalcButton(); updateResumo(); });
-
-      elPace .addEventListener('input', ()=>{ maskPace();  updateCalcButton(); updateResumo(); });
-      elPace .addEventListener('blur',  ()=>{ canonPace(); updateCalcButton(); updateResumo(); });
-
-      elDist .addEventListener('input', ()=>{ updateCalcButton(); updateResumo(); });
-
-      // Enter ativa Calcular
-      [elTempo, elDist, elPace].forEach(el=>{
-        el.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !btnCalc.disabled){ e.preventDefault(); btnCalc.click(); }});
-      });
-
-      // Presets (só distância)
-      document.querySelectorAll('[data-preset]').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const km = Number(btn.dataset.preset);
-          const dist = unit==='mi' ? (km / KM_PER_MI) : km;
-          elDist.value = formatPt(dist);
-          updateCalcButton(); updateResumo();
-        });
-      });
-
-      // Unidade (rodapé)
-      unitSeg.addEventListener('click', (e)=>{
-        const btn = e.target.closest('button[data-unit]'); if(!btn) return;
-        const newUnit = btn.dataset.unit; if(newUnit===unit) return;
-        [...unitSeg.querySelectorAll('button')].forEach(b=>b.setAttribute('aria-pressed', b===btn ? 'true':'false'));
-
-        const d = normNumber(elDist.value);
-        const p = parsePace(elPace.value);
-        if(isFinite(d)) elDist.value = formatPt(newUnit==='mi' ? d / KM_PER_MI : d * KM_PER_MI);
-        if(isFinite(p)) elPace.value = fmtPace(newUnit==='mi' ? p*KM_PER_MI : p/KM_PER_MI);
-
-        unit = newUnit;
-        updateCalcButton(); updateResumo();
-      });
-
-      // Calcular (só com 2 válidos)
-      btnCalc.addEventListener('click', ()=>{
-        const tHas = isTempo(), dHas = isDist(), pHas = isPace();
-        if( (tHas?1:0)+(dHas?1:0)+(pHas?1:0) !== 2 ){ showToast('Preencha exatamente dois campos'); return; }
-        const t = parseTime(elTempo.value), d = normNumber(elDist.value), p = parsePace(elPace.value);
-
-        if(!tHas && dHas && pHas)      elTempo.value = fmtTime(d * p);
-        else if(!pHas && tHas && dHas) elPace.value  = fmtPace(t / d);
-        else if(!dHas && tHas && pHas) elDist.value  = formatPt(isFinite(t/p)? t/p : 0);
-
-        updateCalcButton(); updateResumo();
-      });
-
-      // Limpar
-      document.getElementById('clearBtn').addEventListener('click', ()=>{
-        elTempo.value=''; elDist.value=''; elPace.value='';
-        updateCalcButton(); updateResumo();
-      });
-
-      // ---- Story image + IG / Download (mantido) ----
-      async function makeStoryImage(text){
-        const W=1080, H=1920, p=60;
-        const canvas = document.createElement('canvas'); canvas.width=W; canvas.height=H;
-        const ctx = canvas.getContext('2d');
-        const bg1='#ffffff', bg2='#ffe9e9', fg='#141414', acc='#d42f2f';
-        const g = ctx.createLinearGradient(0,0,W,H); g.addColorStop(0,bg1); g.addColorStop(1,bg2);
-        ctx.fillStyle=g; ctx.fillRect(0,0,W,H); await document.fonts.ready;
-
-        ctx.fillStyle = fg; ctx.font = '700 56px Blinker, sans-serif'; ctx.fillText('Baixa Pace®', p, p+20);
-        ctx.font='700 72px Blinker, sans-serif'; ctx.fillText('Calculadora de Pace', p, p+140);
-
-        ctx.font='600 54px Blinker, sans-serif';
-        const lines = (t=>{const w=t.split(' '),o=[],ctxm=ctx.measureText.bind(ctx); let l=''; for(const x of w){const test=l?l+' '+x:x; if(ctxm(test).width<=W-p*2){l=test}else{o.push(l);l=x}} if(l)o.push(l); return o;})(text);
-        let y=p+260; for(const l of lines){ ctx.fillText(l,p,y); y+=76; }
-
-        ctx.font='400 40px Blinker, sans-serif'; ctx.fillStyle=acc;
-        ctx.fillText('Compartilhe seu tempo e marque @baixapace', p, H-p);
-
-        return new Promise(res=> canvas.toBlob(b=>res(b), 'image/jpeg', 0.95));
-      }
-      async function buildBlob(){
-        const base = resumo.textContent && resumo.textContent!=='—'
-          ? resumo.textContent
-          : 'Preencha dois campos e clique em Calcular para gerar seu resultado.';
-        return await makeStoryImage(base);
-      }
-      btnIG.addEventListener('click', async ()=>{
-        try{
-          const blob = await buildBlob();
-          const file = new File([blob], 'pace-story.jpg', { type: 'image/jpeg' });
-          if(navigator.canShare && navigator.canShare({ files:[file] })){
-            await navigator.share({ files:[file], title:'Calculadora de Pace — Baixa Pace', text:'Meu resultado na Calculadora de Pace' });
-          }else{
-            const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='pace-story.jpg';
-            document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
-          }
-        }catch(e){}
-      });
-      btnDL.addEventListener('click', async ()=>{
-        try{
-          const blob = await buildBlob();
-          const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='pace-story.jpg';
-          document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
-        }catch(e){}
-      });
-
-      // init
-      updateCalcButton(); updateResumo();
-
-      // se estiver em IFRAME, manda altura pro pai (ajuda a acabar com rolagem dupla)
-      if(window.top !== window.self){
-        const postH = ()=> parent.postMessage({type:'bp-resize', height: document.documentElement.scrollHeight }, '*');
-        window.addEventListener('load', postH); new ResizeObserver(postH).observe(document.body);
-      }
-    })();
-  </script>
-</div>
