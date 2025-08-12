@@ -1,4 +1,4 @@
-<!-- Baixa Pace® — Calculadora de Pace (mobile-friendly + máscara + unidade no rodapé) -->
+<!-- Baixa Pace® — Calculadora de Pace (fix iOS backspace + máscara sem pad) -->
 <div id="bp-pace-app" class="bp-pace">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Blinker:wght@400;600;700&display=swap');
@@ -9,7 +9,6 @@
     .bp-title{font-size:clamp(22px,2.4vw,28px);margin:0 0 6px;font-weight:700;letter-spacing:.2px}
     .bp-sub{color:#555;margin:0 0 16px}
 
-    /* Presets no topo (mantidos) */
     .bp-topbar{display:flex;justify-content:flex-start;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 16px}
     .bp-badge{font-size:12px;font-weight:700;padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #e7e7e7}
     .bp-btn{font-weight:700;border:1px solid #e7e7e7;background:#fff;padding:10px 14px;border-radius:12px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.06)}
@@ -31,7 +30,6 @@
     .bp-seg button{padding:10px 14px;background:#fff;border:1px solid #e7e7e7;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.05)}
     .bp-seg button[aria-pressed="true"]{background:#d42f2f;color:#fff;box-shadow:0 4px 12px rgba(212,47,47,.35)}
 
-    /* Rodapé de unidade */
     .bp-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
     .bp-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#141414;color:#fff;padding:10px 14px;border-radius:10px;font-weight:700;opacity:0;pointer-events:none;transition:all .25s ease;box-shadow:0 6px 18px rgba(0,0,0,.25)}
     .bp-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -42,7 +40,6 @@
       <h1 class="bp-title">Calculadora de Pace</h1>
       <p class="bp-sub"><b>Preencha dois campos</b> — e clique em <b>Calcular</b> que eu preencho o terceiro 😉</p>
 
-      <!-- PRESETS (topo) -->
       <div class="bp-topbar">
         <span class="bp-badge">Presets:</span>
         <button class="bp-btn" data-preset="5">5K</button>
@@ -54,18 +51,15 @@
       <div class="bp-grid">
         <div class="bp-field">
           <label class="bp-label" for="tempo">Tempo (hh:mm:ss)</label>
-          <!-- numérico no mobile, com máscara automática de : -->
           <input id="tempo" class="bp-input" type="text" inputmode="numeric" placeholder="02:59:20" autocomplete="off">
           <div class="bp-note">Aceita <b>mm:ss</b> (ex.: 45:30) ou minutos (ex.: 105).</div>
         </div>
         <div class="bp-field">
           <label class="bp-label" for="dist">Distância</label>
-          <!-- aceita vírgula -->
           <input id="dist" class="bp-input" type="text" inputmode="decimal" placeholder="42,195">
         </div>
         <div class="bp-field">
           <label class="bp-label" for="pace">Pace (min/uni)</label>
-          <!-- máscara mm:ss -->
           <input id="pace" class="bp-input" type="text" inputmode="numeric" placeholder="04:30" autocomplete="off">
           <div class="bp-note">Formato <b>mm:ss</b> (ex.: 05:15 por km/mi).</div>
         </div>
@@ -78,7 +72,6 @@
         <button class="bp-btn" id="clearBtn">Limpar</button>
       </div>
 
-      <!-- Unidade NO RODAPÉ -->
       <div class="bp-foot">
         <span class="bp-badge">Unidade:</span>
         <div class="bp-seg" id="unitSeg">
@@ -107,9 +100,9 @@
       const btnIG   = document.getElementById('igBtn');
       const btnDL   = document.getElementById('dlBtn');
 
-      let unit = 'km'; // default Brasil
+      let unit = 'km';
 
-      // ---------- util ----------
+      // --- helpers ---
       function normNumber(str){
         if(!str) return NaN;
         const v = (''+str).trim().replace(/\./g,'').replace(',', '.');
@@ -168,31 +161,38 @@
       function updateCalcButton(){ btnCalc.disabled = (countValid() !== 2); }
       function showToast(msg='Copiado!'){ toast.textContent=msg; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'), 1400); }
 
-      // ---------- máscaras mobile ----------
+      // --- MÁSCARAS SEM PADDING (resolvem o backspace do iOS) ---
       function maskTempo(){
+        // pega só dígitos e limita 6 (hhmmss)
         let d = elTempo.value.replace(/\D/g,'').slice(0,6);
-        let out = d;
-        if(d.length>=5){ // h h m m s s
-          out = d.slice(0,-4).padStart(2,'0') + ':' + d.slice(-4,-2).padStart(2,'0') + ':' + d.slice(-2).padStart(2,'0');
-        }else if(d.length>=3){ // m m s s
-          out = d.slice(0,-2).padStart(2,'0') + ':' + d.slice(-2).padStart(2,'0');
+        let out = '';
+        if(d.length >= 5){          // h:mm:ss (horas sem zero à esquerda)
+          out = d.slice(0,-4) + ':' + d.slice(-4,-2) + ':' + d.slice(-2);
+        }else if(d.length >= 3){    // m:ss ou mm:ss
+          out = d.slice(0,-2) + ':' + d.slice(-2);
+        }else{                      // 1-2 dígitos: deixa cru (minutos)
+          out = d;
         }
         elTempo.value = out;
       }
       function maskPace(){
         let d = elPace.value.replace(/\D/g,'').slice(0,4);
-        let out = d;
-        if(d.length>=3){
-          out = d.slice(0,-2).padStart(2,'0') + ':' + d.slice(-2).padStart(2,'0');
-        }
+        let out = (d.length >= 3) ? (d.slice(0,-2) + ':' + d.slice(-2)) : d; // m:ss ou mm:ss
         elPace.value = out;
       }
+      // normaliza no blur (formato bonito)
+      function canonTempo(){ const t=parseTime(elTempo.value); if(isFinite(t)) elTempo.value=fmtTime(t); }
+      function canonPace(){ const p=parsePace(elPace.value); if(isFinite(p)) elPace.value=fmtPace(p); }
 
       elTempo.addEventListener('input', ()=>{ maskTempo(); updateCalcButton(); updateResumo(); });
+      elTempo.addEventListener('blur',  ()=>{ canonTempo(); updateCalcButton(); updateResumo(); });
+
       elPace .addEventListener('input', ()=>{ maskPace();  updateCalcButton(); updateResumo(); });
+      elPace .addEventListener('blur',  ()=>{ canonPace(); updateCalcButton(); updateResumo(); });
+
       elDist .addEventListener('input', ()=>{ updateCalcButton(); updateResumo(); });
 
-      // Enter nas caixas ativa Calcular (se liberado)
+      // Enter ativa Calcular
       [elTempo, elDist, elPace].forEach(el=>{
         el.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !btnCalc.disabled){ e.preventDefault(); btnCalc.click(); }});
       });
@@ -207,7 +207,7 @@
         });
       });
 
-      // Unidade no rodapé (converte o que existir)
+      // Unidade (rodapé)
       unitSeg.addEventListener('click', (e)=>{
         const btn = e.target.closest('button[data-unit]'); if(!btn) return;
         const newUnit = btn.dataset.unit; if(newUnit===unit) return;
@@ -225,21 +225,13 @@
       // Calcular (só com 2 válidos)
       btnCalc.addEventListener('click', ()=>{
         const tHas = isTempo(), dHas = isDist(), pHas = isPace();
-        if( (tHas?1:0)+(dHas?1:0)+(pHas?1:0) !== 2 ){
-          showToast('Preencha exatamente dois campos'); return;
-        }
-        const t = parseTime(elTempo.value);
-        const d = normNumber(elDist.value);
-        const p = parsePace(elPace.value);
+        if( (tHas?1:0)+(dHas?1:0)+(pHas?1:0) !== 2 ){ showToast('Preencha exatamente dois campos'); return; }
+        const t = parseTime(elTempo.value), d = normNumber(elDist.value), p = parsePace(elPace.value);
 
-        if(!tHas && dHas && pHas){
-          elTempo.value = fmtTime(d * p);
-        }else if(!pHas && tHas && dHas){
-          elPace.value = fmtPace(t / d);
-        }else if(!dHas && tHas && pHas){
-          const dist = t / p;
-          elDist.value = formatPt(isFinite(dist)? dist : 0);
-        }
+        if(!tHas && dHas && pHas)      elTempo.value = fmtTime(d * p);
+        else if(!pHas && tHas && dHas) elPace.value  = fmtPace(t / d);
+        else if(!dHas && tHas && pHas) elDist.value  = formatPt(isFinite(t/p)? t/p : 0);
+
         updateCalcButton(); updateResumo();
       });
 
@@ -249,44 +241,26 @@
         updateCalcButton(); updateResumo();
       });
 
-      // --------- Geração de imagem (tema claro fixo) + IG / Download ---------
+      // ---- Story image + IG / Download (mantido) ----
       async function makeStoryImage(text){
         const W=1080, H=1920, p=60;
         const canvas = document.createElement('canvas'); canvas.width=W; canvas.height=H;
         const ctx = canvas.getContext('2d');
-
         const bg1='#ffffff', bg2='#ffe9e9', fg='#141414', acc='#d42f2f';
-        const g = ctx.createLinearGradient(0,0,W,H);
-        g.addColorStop(0,bg1); g.addColorStop(1,bg2);
-        ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-        await document.fonts.ready;
+        const g = ctx.createLinearGradient(0,0,W,H); g.addColorStop(0,bg1); g.addColorStop(1,bg2);
+        ctx.fillStyle=g; ctx.fillRect(0,0,W,H); await document.fonts.ready;
 
-        ctx.fillStyle = fg;
-        ctx.font = '700 56px Blinker, sans-serif';
-        ctx.fillText('Baixa Pace®', p, p+20);
+        ctx.fillStyle = fg; ctx.font = '700 56px Blinker, sans-serif'; ctx.fillText('Baixa Pace®', p, p+20);
+        ctx.font='700 72px Blinker, sans-serif'; ctx.fillText('Calculadora de Pace', p, p+140);
 
-        ctx.font = '700 72px Blinker, sans-serif';
-        ctx.fillText('Calculadora de Pace', p, p+140);
+        ctx.font='600 54px Blinker, sans-serif';
+        const lines = (t=>{const w=t.split(' '),o=[],ctxm=ctx.measureText.bind(ctx); let l=''; for(const x of w){const test=l?l+' '+x:x; if(ctxm(test).width<=W-p*2){l=test}else{o.push(l);l=x}} if(l)o.push(l); return o;})(text);
+        let y=p+260; for(const l of lines){ ctx.fillText(l,p,y); y+=76; }
 
-        ctx.font = '600 54px Blinker, sans-serif';
-        const lines = wrapText(ctx, text, W - p*2);
-        let y = p+260; lines.forEach(l => { ctx.fillText(l, p, y); y += 76; });
+        ctx.font='400 40px Blinker, sans-serif'; ctx.fillStyle=acc;
+        ctx.fillText('Compartilhe seu tempo e marque @baixapace', p, H-p);
 
-        ctx.font = '400 40px Blinker, sans-serif';
-        ctx.fillStyle = acc;
-        ctx.fillText('Compartilhe seu tempo e marque @baixapace', p, H - p);
-
-        return new Promise(resolve=> canvas.toBlob(b=>resolve(b), 'image/jpeg', 0.95));
-
-        function wrapText(ctx, t, maxW){
-          const words = t.split(' '); let line='', out=[];
-          for(const w of words){
-            const test = line ? line + ' ' + w : w;
-            if(ctx.measureText(test).width <= maxW){ line = test; }
-            else { out.push(line); line = w; }
-          }
-          if(line) out.push(line); return out;
-        }
+        return new Promise(res=> canvas.toBlob(b=>res(b), 'image/jpeg', 0.95));
       }
       async function buildBlob(){
         const base = resumo.textContent && resumo.textContent!=='—'
@@ -301,15 +275,15 @@
           if(navigator.canShare && navigator.canShare({ files:[file] })){
             await navigator.share({ files:[file], title:'Calculadora de Pace — Baixa Pace', text:'Meu resultado na Calculadora de Pace' });
           }else{
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'pace-story.jpg';
+            const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='pace-story.jpg';
             document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
           }
-        }catch(e){ /* silencioso */ }
+        }catch(e){}
       });
       btnDL.addEventListener('click', async ()=>{
         try{
           const blob = await buildBlob();
-          const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'pace-story.jpg';
+          const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='pace-story.jpg';
           document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
         }catch(e){}
       });
@@ -317,7 +291,7 @@
       // init
       updateCalcButton(); updateResumo();
 
-      // ------- opcional: se estiver dentro de IFRAME, envia altura p/ pai (reduz “dupla rolagem”) -------
+      // se estiver em IFRAME, manda altura pro pai (ajuda a acabar com rolagem dupla)
       if(window.top !== window.self){
         const postH = ()=> parent.postMessage({type:'bp-resize', height: document.documentElement.scrollHeight }, '*');
         window.addEventListener('load', postH); new ResizeObserver(postH).observe(document.body);
