@@ -81,7 +81,246 @@
         <span class="badge">Unidade:</span>
         <div class="seg" id="unitSeg">
           <button type="button" data-unit="km" aria-pressed="true">km</button>
-          <button type="
+          <button type="button" data-unit="mi" aria-pressed="false">mi</button>
+        </div>
+      </div>
+
+      <div id="resumo" class="resumo">—</div>
+    </div>
+  </div>
+<script>
+(function(){
+  const KM_PER_MI = 1.60934;
+
+  // ✅ LOGO oficial embutido (PNG transparente)
+  const LOGO_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAAQ4CAYAAADsEGyPAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAFAGlUWHRYTUw6Y29tLmFkb2...AAAAAB7ggMAAADYExwAAADAnuAAAAAA9gIozpfhRD1MvgAAAABJRU5ErkJggg==';
+
+  const elTempo = document.getElementById('tempo');
+  const elDist  = document.getElementById('dist');
+  const elPace  = document.getElementById('pace');
+  const unitSeg = document.getElementById('unitSeg');
+  const resumo  = document.getElementById('resumo');
+  const btnCalc = document.getElementById('calcBtn');
+  const btnIG   = document.getElementById('igBtn');
+  const btnDL   = document.getElementById('dlBtn');
+  const btnClear = document.getElementById('clearBtn');
+
+  let unit = 'km';
+
+  // ---------- util ----------
+  function isiOS(){ return /iP(ad|hone|od)/i.test(navigator.userAgent); }
+  function normNumber(s){ if(!s) return NaN; const v=(''+s).trim().replace(/\./g,'').replace(',', '.'); const n=Number(v); return isFinite(n)?n:NaN; }
+  function formatPt(n,dec=3){ return n.toFixed(dec).replace(/\.?0+$/,'').replace('.',','); }
+
+  function parseTime(v){
+    if(!v) return NaN; v=(''+v).trim();
+    if(/^\d+(:\d{1,2}){0,2}$/.test(v)){
+      const p=v.split(':').map(Number);
+      if(p.length===3) return p[0]*3600+p[1]*60+p[2];
+      if(p.length===2) return p[0]*60+p[1];
+      if(p.length===1) return p[0]*60;
+    }
+    if(/^\d+(\.\d+)?$/.test(v)) return Number(v)*60;
+    return NaN;
+  }
+  function fmtTime(sec){
+    if(!isFinite(sec)) return '';
+    sec=Math.max(0,Math.round(sec));
+    const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+    return h>0? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
+  }
+  const parsePace = parseTime;
+  function fmtPace(sec){
+    if(!isFinite(sec)) return '';
+    sec=Math.max(0,Math.round(sec));
+    const m=Math.floor(sec/60), s=sec%60;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  function isTempo(){ return isFinite(parseTime(elTempo.value)); }
+  function isDist(){ const d=normNumber(elDist.value); return isFinite(d)&&d>0; }
+  function isPace(){ return isFinite(parsePace(elPace.value)); }
+  function countValid(){ return (isTempo()?1:0)+(isDist()?1:0)+(isPace()?1:0); }
+
+  function updateResumo(){
+    const t=parseTime(elTempo.value), d=normNumber(elDist.value), p=parsePace(elPace.value);
+    const parts=[];
+    if(isFinite(t)) parts.push(`Tempo: ${fmtTime(t)}`);
+    if(isFinite(d)) parts.push(`Distância: ${formatPt(d,2)} ${unit}`);
+    if(isFinite(p)) parts.push(`Pace: ${fmtPace(p)} /${unit}`);
+    resumo.textContent = parts.length? parts.join(' • ') : '—';
+  }
+  function updateCalcButton(){ btnCalc.disabled = (countValid()!==2); }
+
+  // máscaras (sem zero automático) + canon no blur
+  function maskTempo(){ let d=elTempo.value.replace(/\D/g,'').slice(0,6), out=''; if(d.length>=5) out=d.slice(0,-4)+':'+d.slice(-4,-2)+':'+d.slice(-2); else if(d.length>=3) out=d.slice(0,-2)+':'+d.slice(-2); else out=d; elTempo.value=out; }
+  function maskPace(){ let d=elPace.value.replace(/\D/g,'').slice(0,4); elPace.value=(d.length>=3)? d.slice(0,-2)+':'+d.slice(-2) : d; }
+  function canonTempo(){ const t=parseTime(elTempo.value); if(isFinite(t)) elTempo.value=fmtTime(t); }
+  function canonPace(){ const p=parsePace(elPace.value); if(isFinite(p)) elPace.value=fmtPace(p); }
+
+  elTempo.addEventListener('input', ()=>{ maskTempo(); updateCalcButton(); updateResumo(); });
+  elTempo.addEventListener('blur',  ()=>{ canonTempo(); updateCalcButton(); updateResumo(); });
+  elPace .addEventListener('input', ()=>{ maskPace();  updateCalcButton(); updateResumo(); });
+  elPace .addEventListener('blur',  ()=>{ canonPace(); updateCalcButton(); updateResumo(); });
+  elDist .addEventListener('input', ()=>{ updateCalcButton(); updateResumo(); });
+
+  [elTempo,elDist,elPace].forEach(el=>{
+    el.addEventListener('keydown',e=>{ if(e.key==='Enter' && !btnCalc.disabled){ e.preventDefault(); btnCalc.click(); }});
+  });
+
+  // presets
+  document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{
+    const km=Number(b.dataset.preset);
+    const dist = unit==='mi' ? (km/KM_PER_MI) : km;
+    elDist.value = formatPt(dist);
+    updateCalcButton(); updateResumo();
+  }));
+
+  // unidade no rodapé
+  unitSeg.addEventListener('click', e=>{
+    const btn=e.target.closest('button[data-unit]'); if(!btn) return;
+    const nu=btn.dataset.unit; if(nu===unit) return;
+    [...unitSeg.querySelectorAll('button')].forEach(b=>b.setAttribute('aria-pressed', b===btn?'true':'false'));
+    const d=normNumber(elDist.value), p=parsePace(elPace.value);
+    if(isFinite(d)) elDist.value=formatPt(nu==='mi'? d/KM_PER_MI : d*KM_PER_MI);
+    if(isFinite(p)) elPace.value=fmtPace(nu==='mi'? p*KM_PER_MI : p/KM_PER_MI);
+    unit=nu; updateCalcButton(); updateResumo();
+  });
+
+  // calcular (só com 2 válidos)
+  btnCalc.addEventListener('click', ()=>{
+    const tHas=isTempo(), dHas=isDist(), pHas=isPace();
+    if((tHas?1:0)+(dHas?1:0)+(pHas?1:0)!==2){ alert('Preencha exatamente dois campos'); return; }
+    const t=parseTime(elTempo.value), d=normNumber(elDist.value), p=parsePace(elPace.value);
+    if(!tHas && dHas && pHas)      elTempo.value=fmtTime(d*p);
+    else if(!pHas && tHas && dHas) elPace.value =fmtPace(t/d);
+    else if(!dHas && tHas && pHas) elDist.value =formatPt(t/p);
+    updateCalcButton(); updateResumo();
+  });
+
+  // ====== GERADOR DE PNG TRANSPARENTE COM LOGO OFICIAL ======
+  function drawRoundedRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+  function loadImage(src){ return new Promise((res,rej)=>{ const img=new Image(); img.onload=()=>res(img); img.onerror=rej; img.src=src; }); }
+
+  async function makeResultPNG(){
+    const W=1080, H=1920, cx=90, cy=260, cw=900, ch=1160, radius=28;
+    const canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H;
+    const ctx=canvas.getContext('2d');
+
+    // fundo: completamente transparente (não desenhar)
+
+    await document.fonts.ready;
+    ctx.textBaseline='top';
+
+    // sombra + cartão branco
+    ctx.save();
+    ctx.shadowColor='rgba(0,0,0,.18)'; ctx.shadowBlur=28; ctx.shadowOffsetY=16;
+    ctx.fillStyle='#ffffff'; drawRoundedRect(ctx,cx,cy,cw,ch,radius); ctx.fill();
+    ctx.restore();
+
+    // faixa vermelha superior
+    ctx.fillStyle='#d42f2f';
+    drawRoundedRect(ctx,cx,cy, cw, 84, radius); ctx.fill();
+
+    // wordmark “Baixa Pace®” na faixa
+    ctx.fillStyle='#fff'; ctx.font='700 30px Blinker, sans-serif';
+    ctx.fillText('Baixa Pace®', cx+90, cy+26);
+
+    // LOGO oficial no canto superior direito (sobre fundo branco)
+    try{
+      const logo = await loadImage(LOGO_DATA_URL);
+      const maxBox = 150; // tamanho máximo do lado
+      const ratio = Math.min(maxBox/logo.width, maxBox/logo.height);
+      const w = logo.width*ratio, h=logo.height*ratio;
+      const lx = cx + cw - w - 40, ly = cy + 110;
+      ctx.drawImage(logo, lx, ly, w, h);
+    }catch(e){ /* se falhar, segue sem o logo */ }
+
+    // título
+    ctx.fillStyle='#141414'; ctx.font='700 56px Blinker, sans-serif';
+    ctx.fillText('RESULTADO', cx+40, cy+120);
+
+    // linha separadora
+    ctx.strokeStyle='#eee'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(cx+40, cy+200); ctx.lineTo(cx+cw-40, cy+200); ctx.stroke();
+
+    // valores
+    const t=parseTime(elTempo.value), d=normNumber(elDist.value), p=parsePace(elPace.value);
+    const tempo = isFinite(t)? fmtTime(t) : '--:--';
+    const dist  = isFinite(d)? `${formatPt(d,2)} ${unit}` : '--';
+    const pace  = isFinite(p)? `${fmtPace(p)} /${unit}` : '--';
+
+    // grid 3 colunas
+    const colW = (cw-80)/3; const baseX = cx+40, baseY = cy+230;
+    function drawField(ix, label, value){
+      const x = baseX + ix*colW;
+      ctx.fillStyle='#777'; ctx.font='700 24px Blinker, sans-serif'; ctx.fillText(label.toUpperCase(), x, baseY);
+      ctx.fillStyle='#141414'; ctx.font='700 64px Blinker, sans-serif'; ctx.fillText(value, x, baseY+36);
+    }
+    drawField(0,'Tempo', tempo);
+    drawField(1,'Distância', dist);
+    drawField(2,'Pace', pace);
+
+    // resumo grande
+    const resumoText = `Tempo: ${tempo} • Distância: ${isFinite(d)?formatPt(d,2):'--'} ${unit} • Pace: ${isFinite(p)?fmtPace(p):'--'} /${unit}`;
+    ctx.fillStyle='#000'; ctx.font='700 40px Blinker, sans-serif';
+    const maxW = cw-80, rx = cx+40, ry = cy+420;
+    wrapFillText(ctx, resumoText, rx, ry, maxW, 50);
+
+    // rodapé
+    ctx.fillStyle='#d42f2f'; ctx.font='600 28px Blinker, sans-serif';
+    ctx.fillText('baixapace.com.br', cx+40, cy+ch-60);
+
+    // fileira externa do cartão
+    ctx.strokeStyle='#eaeaea'; ctx.lineWidth=2; drawRoundedRect(ctx,cx,cy,cw,ch,radius); ctx.stroke();
+
+    return new Promise(res=> canvas.toBlob(b=>res(b), 'image/png', 1));
+
+    function wrapFillText(ctx, text, x, y, maxWidth, lineHeight){
+      const words=text.split(' '); let line='', yy=y;
+      for(const w of words){
+        const test=line?line+' '+w:w;
+        if(ctx.measureText(test).width<=maxWidth){ line=test; }
+        else{ ctx.fillText(line,x,yy); yy+=lineHeight; line=w; }
+      }
+      if(line) ctx.fillText(line,x,yy);
+    }
+  }
+
+  // compartilhar (PNG transparente). Em navegadores que bloqueiam share: abre nova aba p/ salvar.
+  async function sharePNG(){
+    const blob = await makeResultPNG();
+    const file = new File([blob], 'pace-result.png', { type:'image/png' });
+    try{
+      if(navigator.canShare && navigator.canShare({ files:[file] })){
+        await navigator.share({ files:[file], title:'Resultado — Baixa Pace', text:'Meu resultado na Calculadora de Pace' });
+      }else{
+        const r=new FileReader(); r.onload=()=>window.open(r.result,'_blank'); r.readAsDataURL(blob);
+      }
+    }catch(_){}
+  }
+
+  async function downloadPNG(){
+    const blob = await makeResultPNG();
+    if(isiOS()){
+      const r=new FileReader(); r.onload=()=>window.open(r.result,'_blank'); r.readAsDataURL(blob);
+    }else{
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='pace-result.png';
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+    }
+  }
+
+  // binds
+  btnIG.addEventListener('click', sharePNG);
+  btnDL.addEventListener('click', downloadPNG);
+  btnClear.addEventListener('click', ()=>{ elTempo.value=''; elDist.value=''; elPace.value=''; updateCalcButton(); updateResumo(); });
+
+  // init
+  updateCalcButton(); updateResumo();
+
+})();
+</script>
 
 
-
+</body>
+</html>
