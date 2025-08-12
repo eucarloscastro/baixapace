@@ -1,278 +1,119 @@
-diff --git a/index.html b/index.html
-index fb110ce1652e38c9faa754109e03bbf139eebf4c..66275b51dee5b7c058fe5c581bb0bcaf247701c5 100644
---- a/index.html
-+++ b/index.html
-@@ -59,29 +59,272 @@
-           <input id="tempo" class="input" type="text" inputmode="numeric" placeholder="02:59:20" autocomplete="off">
-           <div class="note">Aceita <b>mm:ss</b> (ex.: 45:30) ou minutos (ex.: 105).</div>
-         </div>
-         <div class="field">
-           <label for="dist" class="label">Distância</label>
-           <input id="dist" class="input" type="text" inputmode="decimal" placeholder="42,195">
-         </div>
-         <div class="field">
-           <label for="pace" class="label">Pace (min/uni)</label>
-           <input id="pace" class="input" type="text" inputmode="numeric" placeholder="04:30" autocomplete="off">
-           <div class="note">Formato <b>mm:ss</b> (ex.: 05:15 por km/mi).</div>
-         </div>
-       </div>
- 
-       <div class="row">
-         <button class="btn primary" id="calcBtn" disabled>Calcular</button>
-         <button class="btn" id="igBtn">Compartilhar no Instagram</button>
-         <button class="btn" id="dlBtn">Baixar imagem</button>
-         <button class="btn" id="clearBtn">Limpar</button>
-       </div>
- 
-       <div class="foot">
-         <span class="badge">Unidade:</span>
-         <div class="seg" id="unitSeg">
-           <button type="button" data-unit="km" aria-pressed="true">km</button>
--          <button type="
-+          <button type="button" data-unit="mi" aria-pressed="false">mi</button>
-+        </div>
-+      </div>
-+
-+      <div id="resumo" class="resumo">—</div>
-+    </div>
-+  </div>
-+<script>
-+(function(){
-+  const KM_PER_MI = 1.60934;
-+
-+  // ✅ LOGO oficial embutido (PNG transparente)
-+  const LOGO_DATA_URL = 'data:image/png;base64,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';
-+
-+  const elTempo = document.getElementById('tempo');
-+  const elDist  = document.getElementById('dist');
-+  const elPace  = document.getElementById('pace');
-+  const unitSeg = document.getElementById('unitSeg');
-+  const resumo  = document.getElementById('resumo');
-+  const btnCalc = document.getElementById('calcBtn');
-+  const btnIG   = document.getElementById('igBtn');
-+  const btnDL   = document.getElementById('dlBtn');
-+  const btnClear = document.getElementById('clearBtn');
-+
-+  let unit = 'km';
-+
-+  // ---------- util ----------
-+  function isiOS(){ return /iP(ad|hone|od)/i.test(navigator.userAgent); }
-+  function normNumber(s){ if(!s) return NaN; const v=(''+s).trim().replace(/\./g,'').replace(',', '.'); const n=Number(v); return isFinite(n)?n:NaN; }
-+  function formatPt(n,dec=3){ return n.toFixed(dec).replace(/\.?0+$/,'').replace('.',','); }
-+
-+  function parseTime(v){
-+    if(!v) return NaN; v=(''+v).trim();
-+    if(/^\d+(:\d{1,2}){0,2}$/.test(v)){
-+      const p=v.split(':').map(Number);
-+      if(p.length===3) return p[0]*3600+p[1]*60+p[2];
-+      if(p.length===2) return p[0]*60+p[1];
-+      if(p.length===1) return p[0]*60;
-+    }
-+    if(/^\d+(\.\d+)?$/.test(v)) return Number(v)*60;
-+    return NaN;
-+  }
-+  function fmtTime(sec){
-+    if(!isFinite(sec)) return '';
-+    sec=Math.max(0,Math.round(sec));
-+    const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
-+    return h>0? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
-+  }
-+  const parsePace = parseTime;
-+  function fmtPace(sec){
-+    if(!isFinite(sec)) return '';
-+    sec=Math.max(0,Math.round(sec));
-+    const m=Math.floor(sec/60), s=sec%60;
-+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-+  }
-+
-+  function isTempo(){ return isFinite(parseTime(elTempo.value)); }
-+  function isDist(){ const d=normNumber(elDist.value); return isFinite(d)&&d>0; }
-+  function isPace(){ return isFinite(parsePace(elPace.value)); }
-+  function countValid(){ return (isTempo()?1:0)+(isDist()?1:0)+(isPace()?1:0); }
-+
-+  function updateResumo(){
-+    const t=parseTime(elTempo.value), d=normNumber(elDist.value), p=parsePace(elPace.value);
-+    const parts=[];
-+    if(isFinite(t)) parts.push(`Tempo: ${fmtTime(t)}`);
-+    if(isFinite(d)) parts.push(`Distância: ${formatPt(d,2)} ${unit}`);
-+    if(isFinite(p)) parts.push(`Pace: ${fmtPace(p)} /${unit}`);
-+    resumo.textContent = parts.length? parts.join(' • ') : '—';
-+  }
-+  function updateCalcButton(){ btnCalc.disabled = (countValid()!==2); }
-+
-+  // máscaras (sem zero automático) + canon no blur
-+  function maskTempo(){ let d=elTempo.value.replace(/\D/g,'').slice(0,6), out=''; if(d.length>=5) out=d.slice(0,-4)+':'+d.slice(-4,-2)+':'+d.slice(-2); else if(d.length>=3) out=d.slice(0,-2)+':'+d.slice(-2); else out=d; elTempo.value=out; }
-+  function maskPace(){ let d=elPace.value.replace(/\D/g,'').slice(0,4); elPace.value=(d.length>=3)? d.slice(0,-2)+':'+d.slice(-2) : d; }
-+  function canonTempo(){ const t=parseTime(elTempo.value); if(isFinite(t)) elTempo.value=fmtTime(t); }
-+  function canonPace(){ const p=parsePace(elPace.value); if(isFinite(p)) elPace.value=fmtPace(p); }
-+
-+  elTempo.addEventListener('input', ()=>{ maskTempo(); updateCalcButton(); updateResumo(); });
-+  elTempo.addEventListener('blur',  ()=>{ canonTempo(); updateCalcButton(); updateResumo(); });
-+  elPace .addEventListener('input', ()=>{ maskPace();  updateCalcButton(); updateResumo(); });
-+  elPace .addEventListener('blur',  ()=>{ canonPace(); updateCalcButton(); updateResumo(); });
-+  elDist .addEventListener('input', ()=>{ updateCalcButton(); updateResumo(); });
-+
-+  [elTempo,elDist,elPace].forEach(el=>{
-+    el.addEventListener('keydown',e=>{ if(e.key==='Enter' && !btnCalc.disabled){ e.preventDefault(); btnCalc.click(); }});
-+  });
-+
-+  // presets
-+  document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{
-+    const km=Number(b.dataset.preset);
-+    const dist = unit==='mi' ? (km/KM_PER_MI) : km;
-+    elDist.value = formatPt(dist);
-+    updateCalcButton(); updateResumo();
-+  }));
-+
-+  // unidade no rodapé
-+  unitSeg.addEventListener('click', e=>{
-+    const btn=e.target.closest('button[data-unit]'); if(!btn) return;
-+    const nu=btn.dataset.unit; if(nu===unit) return;
-+    [...unitSeg.querySelectorAll('button')].forEach(b=>b.setAttribute('aria-pressed', b===btn?'true':'false'));
-+    const d=normNumber(elDist.value), p=parsePace(elPace.value);
-+    if(isFinite(d)) elDist.value=formatPt(nu==='mi'? d/KM_PER_MI : d*KM_PER_MI);
-+    if(isFinite(p)) elPace.value=fmtPace(nu==='mi'? p*KM_PER_MI : p/KM_PER_MI);
-+    unit=nu; updateCalcButton(); updateResumo();
-+  });
-+
-+  // calcular (só com 2 válidos)
-+  btnCalc.addEventListener('click', ()=>{
-+    const tHas=isTempo(), dHas=isDist(), pHas=isPace();
-+    if((tHas?1:0)+(dHas?1:0)+(pHas?1:0)!==2){ alert('Preencha exatamente dois campos'); return; }
-+    const t=parseTime(elTempo.value), d=normNumber(elDist.value), p=parsePace(elPace.value);
-+    if(!tHas && dHas && pHas)      elTempo.value=fmtTime(d*p);
-+    else if(!pHas && tHas && dHas) elPace.value =fmtPace(t/d);
-+    else if(!dHas && tHas && pHas) elDist.value =formatPt(t/p);
-+    updateCalcButton(); updateResumo();
-+  });
-+
-+  // ====== GERADOR DE PNG TRANSPARENTE COM LOGO OFICIAL ======
-+  function drawRoundedRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-+  function loadImage(src){ return new Promise((res,rej)=>{ const img=new Image(); img.onload=()=>res(img); img.onerror=rej; img.src=src; }); }
-+
-+  async function makeResultPNG(){
-+    const W=1080, H=1920, cx=90, cy=260, cw=900, ch=1160, radius=28;
-+    const canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H;
-+    const ctx=canvas.getContext('2d');
-+
-+    // fundo: completamente transparente (não desenhar)
-+
-+    await document.fonts.ready;
-+    ctx.textBaseline='top';
-+
-+    // sombra + cartão branco
-+    ctx.save();
-+    ctx.shadowColor='rgba(0,0,0,.18)'; ctx.shadowBlur=28; ctx.shadowOffsetY=16;
-+    ctx.fillStyle='#ffffff'; drawRoundedRect(ctx,cx,cy,cw,ch,radius); ctx.fill();
-+    ctx.restore();
-+
-+    // faixa vermelha superior
-+    ctx.fillStyle='#d42f2f';
-+    drawRoundedRect(ctx,cx,cy, cw, 84, radius); ctx.fill();
-+
-+    // wordmark “Baixa Pace®” na faixa
-+    ctx.fillStyle='#fff'; ctx.font='700 30px Blinker, sans-serif';
-+    ctx.fillText('Baixa Pace®', cx+90, cy+26);
-+
-+    // LOGO oficial no canto superior direito (sobre fundo branco)
-+    try{
-+      const logo = await loadImage(LOGO_DATA_URL);
-+      const maxBox = 150; // tamanho máximo do lado
-+      const ratio = Math.min(maxBox/logo.width, maxBox/logo.height);
-+      const w = logo.width*ratio, h=logo.height*ratio;
-+      const lx = cx + cw - w - 40, ly = cy + 110;
-+      ctx.drawImage(logo, lx, ly, w, h);
-+    }catch(e){ /* se falhar, segue sem o logo */ }
-+
-+    // título
-+    ctx.fillStyle='#141414'; ctx.font='700 56px Blinker, sans-serif';
-+    ctx.fillText('RESULTADO', cx+40, cy+120);
-+
-+    // linha separadora
-+    ctx.strokeStyle='#eee'; ctx.lineWidth=2;
-+    ctx.beginPath(); ctx.moveTo(cx+40, cy+200); ctx.lineTo(cx+cw-40, cy+200); ctx.stroke();
-+
-+    // valores
-+    const t=parseTime(elTempo.value), d=normNumber(elDist.value), p=parsePace(elPace.value);
-+    const tempo = isFinite(t)? fmtTime(t) : '--:--';
-+    const dist  = isFinite(d)? `${formatPt(d,2)} ${unit}` : '--';
-+    const pace  = isFinite(p)? `${fmtPace(p)} /${unit}` : '--';
-+
-+    // grid 3 colunas
-+    const colW = (cw-80)/3; const baseX = cx+40, baseY = cy+230;
-+    function drawField(ix, label, value){
-+      const x = baseX + ix*colW;
-+      ctx.fillStyle='#777'; ctx.font='700 24px Blinker, sans-serif'; ctx.fillText(label.toUpperCase(), x, baseY);
-+      ctx.fillStyle='#141414'; ctx.font='700 64px Blinker, sans-serif'; ctx.fillText(value, x, baseY+36);
-+    }
-+    drawField(0,'Tempo', tempo);
-+    drawField(1,'Distância', dist);
-+    drawField(2,'Pace', pace);
-+
-+    // resumo grande
-+    const resumoText = `Tempo: ${tempo} • Distância: ${isFinite(d)?formatPt(d,2):'--'} ${unit} • Pace: ${isFinite(p)?fmtPace(p):'--'} /${unit}`;
-+    ctx.fillStyle='#000'; ctx.font='700 40px Blinker, sans-serif';
-+    const maxW = cw-80, rx = cx+40, ry = cy+420;
-+    wrapFillText(ctx, resumoText, rx, ry, maxW, 50);
-+
-+    // rodapé
-+    ctx.fillStyle='#d42f2f'; ctx.font='600 28px Blinker, sans-serif';
-+    ctx.fillText('baixapace.com.br', cx+40, cy+ch-60);
-+
-+    // fileira externa do cartão
-+    ctx.strokeStyle='#eaeaea'; ctx.lineWidth=2; drawRoundedRect(ctx,cx,cy,cw,ch,radius); ctx.stroke();
-+
-+    return new Promise(res=> canvas.toBlob(b=>res(b), 'image/png', 1));
-+
-+    function wrapFillText(ctx, text, x, y, maxWidth, lineHeight){
-+      const words=text.split(' '); let line='', yy=y;
-+      for(const w of words){
-+        const test=line?line+' '+w:w;
-+        if(ctx.measureText(test).width<=maxWidth){ line=test; }
-+        else{ ctx.fillText(line,x,yy); yy+=lineHeight; line=w; }
-+      }
-+      if(line) ctx.fillText(line,x,yy);
-+    }
-+  }
-+
-+  // compartilhar (PNG transparente). Em navegadores que bloqueiam share: abre nova aba p/ salvar.
-+  async function sharePNG(){
-+    const blob = await makeResultPNG();
-+    const file = new File([blob], 'pace-result.png', { type:'image/png' });
-+    try{
-+      if(navigator.canShare && navigator.canShare({ files:[file] })){
-+        await navigator.share({ files:[file], title:'Resultado — Baixa Pace', text:'Meu resultado na Calculadora de Pace' });
-+      }else{
-+        const r=new FileReader(); r.onload=()=>window.open(r.result,'_blank'); r.readAsDataURL(blob);
-+      }
-+    }catch(_){}
-+  }
-+
-+  async function downloadPNG(){
-+      const blob = await makeResultPNG();
-+      const file = new File([blob], 'pace-result.png', { type:'image/png' });
-+      if(navigator.canShare && navigator.canShare({ files:[file] })){
-+        try{ await navigator.share({ files:[file], title:'Resultado — Baixa Pace' }); return; }catch(_){/*fallback*/}
-+      }
-+      if(isiOS()){
-+        const r=new FileReader(); r.onload=()=>window.open(r.result,'_blank'); r.readAsDataURL(blob);
-+      }else{
-+        const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='pace-result.png';
-+        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
-+      }
-+    }
-+
-+  // binds
-+  btnIG.addEventListener('click', sharePNG);
-+  btnDL.addEventListener('click', downloadPNG);
-+  btnClear.addEventListener('click', ()=>{ elTempo.value=''; elDist.value=''; elPace.value=''; updateCalcButton(); updateResumo(); });
-+
-+  // init
-+  updateCalcButton(); updateResumo();
- 
-+})();
-+</script>
- 
- 
-+</body>
-+</html>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Calculadora de Pace - Baixa Pace</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        max-width: 500px;
+        margin: auto;
+        padding: 20px;
+        background-color: #fff;
+        color: #333;
+    }
+    h1 {
+        text-align: center;
+        color: #c8102e;
+    }
+    label {
+        display: block;
+        margin-top: 15px;
+        font-weight: bold;
+    }
+    input, select, button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 5px;
+        box-sizing: border-box;
+        font-size: 16px;
+    }
+    button {
+        background-color: #c8102e;
+        color: white;
+        border: none;
+        cursor: pointer;
+        margin-top: 20px;
+    }
+    button:hover {
+        background-color: #a10d24;
+    }
+    .result {
+        margin-top: 20px;
+        padding: 15px;
+        background: #f2f2f2;
+        border-radius: 5px;
+        font-size: 18px;
+        text-align: center;
+    }
+    .logo {
+        display: block;
+        margin: 0 auto 20px auto;
+        max-width: 120px;
+    }
+</style>
+</head>
+<body>
+
+<img class="logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..." alt="Logo Baixa Pace">
+
+<h1>Calculadora de Pace</h1>
+<p>Preencha dois campos e clique em "Calcular" para descobrir o terceiro.</p>
+
+<label for="distance">Distância:</label>
+<input type="number" id="distance" placeholder="Ex: 10" step="0.01">
+
+<label for="time">Tempo (hh:mm:ss):</label>
+<input type="text" id="time" placeholder="Ex: 00:45:30">
+
+<label for="pace">Pace (mm:ss/km):</label>
+<input type="text" id="pace" placeholder="Ex: 04:30">
+
+<button onclick="calcular()">Calcular</button>
+
+<div class="result" id="resultado"></div>
+
+<script>
+function calcular() {
+    let distancia = parseFloat(document.getElementById('distance').value.replace(',', '.')) || null;
+    let tempo = document.getElementById('time').value || null;
+    let pace = document.getElementById('pace').value || null;
+
+    function tempoParaSegundos(t) {
+        let partes = t.split(':').map(Number);
+        if (partes.length === 3) return partes[0] * 3600 + partes[1] * 60 + partes[2];
+        if (partes.length === 2) return partes[0] * 60 + partes[1];
+        return 0;
+    }
+
+    function segundosParaTempo(s) {
+        let h = Math.floor(s / 3600);
+        let m = Math.floor((s % 3600) / 60);
+        let sec = Math.floor(s % 60);
+        return (h > 0 ? String(h).padStart(2, '0') + ':' : '') + String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+    }
+
+    if (distancia && tempo && !pace) {
+        let tempoSeg = tempoParaSegundos(tempo);
+        let paceSeg = tempoSeg / distancia;
+        pace = segundosParaTempo(paceSeg);
+        document.getElementById('resultado').innerText = `Pace: ${pace} min/km`;
+    } else if (distancia && pace && !tempo) {
+        let paceSeg = tempoParaSegundos(pace);
+        let tempoSeg = paceSeg * distancia;
+        tempo = segundosParaTempo(tempoSeg);
+        document.getElementById('resultado').innerText = `Tempo: ${tempo}`;
+    } else if (tempo && pace && !distancia) {
+        let tempoSeg = tempoParaSegundos(tempo);
+        let paceSeg = tempoParaSegundos(pace);
+        distancia = tempoSeg / paceSeg;
+        document.getElementById('resultado').innerText = `Distância: ${distancia.toFixed(2)} km`;
+    } else {
+        document.getElementById('resultado').innerText = 'Por favor, preencha exatamente dois campos.';
+    }
+}
+</script>
+
+</body>
+</html>
